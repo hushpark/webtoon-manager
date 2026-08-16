@@ -64,7 +64,7 @@ export default function App() {
 
   const fetchAllWorks = async () => {
     const { data } = await supabase.from('works').select('*').order('updated_at', { ascending: false });
-    if (data) setAllWorks(data);
+    if (data) setAllWorks(data as Work[]);
   };
 
   useEffect(() => {
@@ -147,7 +147,7 @@ export default function App() {
     if (exact) {
       setSearchState({ type: 'EXACT_MATCH', work: exact });
       setEpisodeInput(exact.episode);
-      setSelectedStatus(exact.status);
+      setSelectedStatus(exact.status as WorkStatus);
       setSelectedRawButton(exact.status);
     } else if (matches.length > 0) {
       setSearchState({ type: 'PARTIAL_MATCH', candidates: matches });
@@ -167,7 +167,7 @@ export default function App() {
     setShowSuggestions(false);
     setSearchState({ type: 'EXACT_MATCH', work });
     setEpisodeInput(work.episode);
-    setSelectedStatus(work.status);
+    setSelectedStatus(work.status as WorkStatus);
     setSelectedRawButton(work.status);
     setLogs((prev) => Array.from(new Set([work.title, ...prev])).slice(0, 10));
     resetTimer();
@@ -189,7 +189,7 @@ export default function App() {
     if (exact) {
       setSearchState({ type: 'EXACT_MATCH', work: exact });
       setEpisodeInput(exact.episode);
-      setSelectedStatus(exact.status);
+      setSelectedStatus(exact.status as WorkStatus);
       setSelectedRawButton(exact.status);
     } else {
       const matches = allWorks.filter(w => cleanTitle(w.title).includes(cleaned));
@@ -209,16 +209,16 @@ export default function App() {
         const currentStatus = searchState.work.status;
 
         if (currentStatus.startsWith('본거_')) {
-          setSelectedStatus(currentStatus);
+          setSelectedStatus(currentStatus as WorkStatus);
           return;
         }
 
-        if (currentStatus === '연재중') setSelectedStatus('본거_연재중');
-        else if (currentStatus === '완결') setSelectedStatus('본거_완결');
-        else if (currentStatus === '시즌 완결') setSelectedStatus('본거_시즌완결');
-        else if (currentStatus === '휴재') setSelectedStatus('본거_휴재');
+        if (currentStatus === '연재중') setSelectedStatus('본거_연재중' as WorkStatus);
+        else if (currentStatus === '완결') setSelectedStatus('본거_완결' as WorkStatus);
+        else if (currentStatus === '시즌 완결') setSelectedStatus('본거_시즌완결' as WorkStatus);
+        else if (currentStatus === '휴재') setSelectedStatus('본거_휴재' as WorkStatus);
         else {
-          setSelectedStatus('본거_완결');
+          setSelectedStatus('본거_완결' as WorkStatus);
         }
       } else {
         setErrorMessage('⚠️ 작품을 선택한 상태에서만 [본거] 지정이 가능합니다.');
@@ -312,12 +312,11 @@ export default function App() {
     }
   };
 
-  // 빠른 회차 증가 (+1 클릭 시 불꽃 제거 적용)
+  // 빠른 회차 증가 (+1 클릭 시 불꽃 제거)
   const handleQuickIncrementEpisode = async (work: Work, e: React.MouseEvent) => {
     e.stopPropagation();
     const nextEp = work.episode + 1;
     
-    // +1 회차를 올릴 때 불꽃(has_fire_emoji)을 false로 함께 업데이트
     const { error } = await supabase
       .from('works')
       .update({ 
@@ -346,7 +345,7 @@ export default function App() {
     return 'bg-slate-50 text-slate-800 border-slate-300';
   };
 
-  // 🔍 12개 상태 탭 조건별 정밀 필터링 및 정렬 로직
+  // 🔍 12개 상태 탭 조건별 필터링 및 정렬 로직 (빌드 타입 에러 완벽 해결)
   const filteredAndSortedWorks = useMemo(() => {
     const now = new Date().getTime();
     const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
