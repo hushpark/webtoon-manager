@@ -7,7 +7,6 @@ import {
   Lock, BookOpen, AlertCircle, Clock, Sparkles, X, Flame, Layers, Plus, Palette, Check, Trash2
 } from 'lucide-react';
 
-// TypeScript 빌드 에러 방지를 위한 Work 타입 확장 (created_at, updated_at 추가)
 export interface Work extends BaseWork {
   created_at?: string;
   updated_at?: string;
@@ -23,7 +22,6 @@ const UPDATE_STATUS_BUTTONS = [
 
 type UpdateButtonType = typeof UPDATE_STATUS_BUTTONS[number];
 
-// 12개 상세 상태 탭 정의 (맨 앞 '신규' 포함)
 const STATUS_TABS = [
   { id: 'NEW', label: '신규' },
   { id: 'ALL', label: '전체' },
@@ -51,14 +49,12 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading] = useState(false);
   
-  // 실시간 유사 작품 드롭다운용 상태
   const [suggestions, setSuggestions] = useState<Work[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [currentTheme, setCurrentTheme] = useState<ThemeType>('COBALT');
   const [allWorks, setAllWorks] = useState<Work[]>([]);
   
-  // 목록 필터 탭 & 정렬 옵션 상태
   const [activeTab, setActiveTab] = useState<string>('NEW');
   const [sortOption, setSortOption] = useState<SortOption>('title_asc');
 
@@ -77,7 +73,6 @@ export default function App() {
     fetchAllWorks();
   }, []);
 
-  // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
@@ -128,7 +123,7 @@ export default function App() {
     if (searchInputRef.current) searchInputRef.current.focus();
   };
 
-  // 실시간 입력 타이핑에 따른 유사 작품 자동 검색
+  // 🎯 실시간 타이핑 시 자동 매칭 정밀 로직 (완전 일치만 기존 작품으로 인정)
   const handleInputChange = (value: string) => {
     setSearchInput(value);
     const trimmed = value.trim();
@@ -149,18 +144,16 @@ export default function App() {
     setSuggestions(matches);
     setShowSuggestions(true);
 
+    // 🎯 공백 제외 제목이 100% 똑같은 작품이 있을 때만 기존 작품으로 연결
     const exact = matches.find(w => cleanTitle(w.title) === cleaned);
+
     if (exact) {
       setSearchState({ type: 'EXACT_MATCH', work: exact });
       setEpisodeInput(exact.episode);
       setSelectedStatus(exact.status as WorkStatus);
       setSelectedRawButton(exact.status);
-    } else if (matches.length > 0) {
-      setSearchState({ type: 'PARTIAL_MATCH', candidates: matches });
-      setSelectedStatus('');
-      setSelectedRawButton('');
-      setEpisodeInput('');
     } else {
+      // "히어로즈"처럼 포함하는 다른 작품은 있어도 정확한 본 제목이 없다면 신규 작품으로 판단
       setSearchState({ type: 'NEW_WORK', query: trimmed });
       setSelectedStatus('');
       setSelectedRawButton('');
@@ -198,12 +191,7 @@ export default function App() {
       setSelectedStatus(exact.status as WorkStatus);
       setSelectedRawButton(exact.status);
     } else {
-      const matches = allWorks.filter(w => cleanTitle(w.title).includes(cleaned));
-      if (matches.length > 0) {
-        setSearchState({ type: 'PARTIAL_MATCH', candidates: matches });
-      } else {
-        setSearchState({ type: 'NEW_WORK', query: trimmed });
-      }
+      setSearchState({ type: 'NEW_WORK', query: trimmed });
     }
   };
 
@@ -318,7 +306,6 @@ export default function App() {
     }
   };
 
-  // 빠른 회차 증가 (+1 클릭 시 불꽃 제거)
   const handleQuickIncrementEpisode = async (work: Work, e: React.MouseEvent) => {
     e.stopPropagation();
     const nextEp = work.episode + 1;
@@ -351,13 +338,11 @@ export default function App() {
     return 'bg-slate-50 text-slate-800 border-slate-300';
   };
 
-  // 🔍 12개 상태 탭 필터링 및 정렬 로직 (created_at, updated_at 완벽 연동)
   const filteredAndSortedWorks = useMemo(() => {
     const now = new Date().getTime();
     const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 
     const filtered = allWorks.filter((work) => {
-      // 1. 신규 탭: 14일 이내 & 불꽃(has_fire_emoji)이 켜져 있는 작품만
       if (activeTab === 'NEW') {
         if (!work.has_fire_emoji) return false;
 
@@ -367,11 +352,9 @@ export default function App() {
         const workDate = new Date(dateStr).getTime();
         if (now - workDate > TWO_WEEKS_MS) return false;
       }
-      // 2. 전체 탭
       else if (activeTab === 'ALL') {
         return true;
       }
-      // 3. 개별 상태 탭 (엄격 매칭)
       else {
         const targetStatus = activeTab.replace(/\s+/g, '');
         const currentWorkStatus = (work.status || '').replace(/\s+/g, '');
@@ -381,7 +364,6 @@ export default function App() {
       return true;
     });
 
-    // 정렬 (이름/회차 오름차순/내림차순)
     return filtered.sort((a, b) => {
       if (sortOption === 'title_asc') {
         return a.title.localeCompare(b.title, 'ko');
@@ -473,7 +455,6 @@ export default function App() {
               </button>
             )}
 
-            {/* 실시간 콤보박스 (자동완성 레이어) */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden max-h-60 overflow-y-auto">
                 <div className="p-2 text-[10px] font-bold text-slate-400 bg-slate-50 border-b border-slate-100 uppercase">
@@ -501,7 +482,6 @@ export default function App() {
             )}
           </div>
 
-          {/* 전광판 */}
           <div>
             {loading && (
               <p className={`text-xs font-bold ${themeStyles.accentText} animate-pulse flex items-center gap-1.5 py-1`}>
@@ -524,12 +504,6 @@ export default function App() {
                 <p className="text-[11px] text-blue-800 mt-1">
                   등록되어 있는 작품입니다. 이동할 분류를 아래에서 선택하세요.
                 </p>
-              </div>
-            )}
-
-            {!loading && searchState.type === 'PARTIAL_MATCH' && (
-              <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-xs sm:text-sm text-amber-900">
-                <span className="font-bold">❓ 상단 입력창 레이어에서 일치하는 작품을 클릭해 주세요.</span>
               </div>
             )}
 
@@ -623,12 +597,6 @@ export default function App() {
                 작품 검색 완료 후 선택할 수 있는 분류 버튼이 활성화됩니다.
               </div>
             )}
-
-            {searchState.type === 'PARTIAL_MATCH' && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 text-center">
-                상단 타이핑 콤보박스 레이어에서 이동할 작품을 클릭해 주세요.
-              </div>
-            )}
           </div>
 
           {errorMessage && (
@@ -639,7 +607,6 @@ export default function App() {
           )}
         </section>
 
-        {/* 최근 검색 */}
         {logs.length > 0 && (
           <section className="space-y-1">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
@@ -660,7 +627,7 @@ export default function App() {
           </section>
         )}
 
-        {/* 📚 12개 상태 탭 & 정렬 옵션이 적용된 작품 목록 영역 */}
+        {/* 📚 작품 목록 영역 */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors`}>
           <div className="flex items-center justify-between text-xs font-bold text-slate-700">
             <span className="flex items-center gap-1.5">
@@ -668,7 +635,6 @@ export default function App() {
               <span>전체 작품 목록 ({filteredAndSortedWorks.length})</span>
             </span>
 
-            {/* 정렬 드롭다운 */}
             <select
               value={sortOption}
               onChange={(e) => setSortOption(e.target.value as SortOption)}
@@ -681,18 +647,17 @@ export default function App() {
             </select>
           </div>
 
-          {/* 12개 상태 가로 스크롤 탭 바 */}
-          <div className="flex gap-1 overflow-x-auto pb-2 scrollbar-none snap-x bg-slate-100 p-1 rounded-xl text-xs font-bold">
+          <div className="flex gap-1.5 overflow-x-auto pb-2.5 bg-slate-100 p-1.5 rounded-xl text-xs font-bold touch-pan-x">
             {STATUS_TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all snap-start ${
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-all ${
                     isActive
                       ? `${themeStyles.headerBg} text-white shadow-xs`
-                      : 'text-slate-500 hover:text-slate-800'
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
                   }`}
                 >
                   {tab.label}
@@ -701,7 +666,6 @@ export default function App() {
             })}
           </div>
 
-          {/* 작품 목록 세로 리스트 */}
           <div className="space-y-1.5 max-h-80 overflow-y-auto pr-0.5">
             {filteredAndSortedWorks.length === 0 ? (
               <div className="p-4 text-center text-xs text-slate-400 italic">
@@ -719,7 +683,6 @@ export default function App() {
                     <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-black truncate">{work.title}</span>
                   </div>
 
-                  {/* 우측 항목 고정 정렬 세로 라인 */}
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={`w-14 text-right text-xs font-mono font-bold ${themeStyles.accentText}`}>
                       {work.episode}화
@@ -745,7 +708,7 @@ export default function App() {
 
       </main>
 
-      {/* 하단 고정 스티키 액션 바 */}
+      {/* 하단 스티키 액션 바 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 z-40 shadow-lg">
         <div className="max-w-xl mx-auto flex gap-2">
           <button
