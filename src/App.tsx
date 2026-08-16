@@ -719,8 +719,8 @@ export default function App() {
 
       </main>
 
-      {/* 하단 스티키 바 */}
-      <div className="fixed bottom-0 left-0 right-0 p-3 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg">
+      {/* 🎯 상단 카드 상자 패딩(p-3.5 sm:p-6)과 정확히 맞춘 하단 스티키 바 영역 */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-3.5 sm:px-6 py-3">
         <div className="max-w-xl mx-auto flex gap-2">
           <button
             onClick={handleRegister}
