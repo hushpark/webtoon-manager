@@ -37,12 +37,14 @@ type SortOption = 'title_asc' | 'title_desc' | 'ep_desc' | 'ep_asc';
 export default function App() {
   const [works, setWorks] = useState<Work[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  
+  // 조회/검색 관련 상태
   const [selectedStatus, setSelectedStatus] = useState<string>('NEW');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [episodeInput, setEpisodeInput] = useState<string>('');
   const [sortOption, setSortOption] = useState<SortOption>('title_asc');
 
-  // 데이터 불러오기
+  // Supabase DB 불러오기
   const fetchWorks = async () => {
     setLoading(true);
     try {
@@ -72,6 +74,7 @@ export default function App() {
     const nextEp = Math.max(0, currentEp + delta);
     const shouldRemoveFire = delta > 0;
 
+    // 선반영
     setWorks((prev) =>
       prev.map((item) =>
         item.id === id
@@ -102,13 +105,13 @@ export default function App() {
 
   const cleanStr = (str: string) => str.replace(/\s+/g, '').toLowerCase();
 
-  // 필터링 및 정렬
+  // 🔍 조회 목록 필터링 및 정렬 로직
   const filteredAndSortedWorks = useMemo(() => {
     const now = new Date().getTime();
     const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 
     const filtered = works.filter((work) => {
-      // 1. 신규 탭: 14일 이내 & 불꽃(has_fire_emoji)이 켜져 있는 작품만
+      // 1. 신규 탭: 14일 이내 & 불꽃(has_fire_emoji)이 살아있는 경우만
       if (selectedStatus === 'NEW') {
         if (!work.has_fire_emoji) return false;
 
@@ -118,14 +121,14 @@ export default function App() {
         const workDate = new Date(dateStr).getTime();
         if (now - workDate > TWO_WEEKS_MS) return false;
       } 
-      // 2. 상태별 매칭 (엄격 구분)
+      // 2. 상태 탭 개별 정밀 구분
       else if (selectedStatus !== 'ALL') {
         const targetStatus = selectedStatus.replace(/\s+/g, '');
         const currentWorkStatus = (work.status || '').replace(/\s+/g, '');
         if (currentWorkStatus !== targetStatus) return false;
       }
 
-      // 3. 검색어 필터링
+      // 3. 검색어 매칭
       if (searchQuery.trim()) {
         const query = cleanStr(searchQuery);
         const titleMatch = cleanStr(work.title || '').includes(query);
@@ -139,7 +142,7 @@ export default function App() {
       return true;
     });
 
-    // 정렬
+    // 4. 정렬 (이름/회차)
     return filtered.sort((a, b) => {
       if (sortOption === 'title_asc') {
         return a.title.localeCompare(b.title, 'ko');
@@ -162,7 +165,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#0d1322] text-slate-800 p-4 max-w-xl mx-auto flex flex-col gap-4 font-sans">
       
-      {/* 1. 작품 제목 입력 상자 */}
+      {/* 1. 작품 제목 입력 상자 (원래 디자인 100% 보존) */}
       <div className="bg-white rounded-2xl p-5 shadow-lg">
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-blue-600 font-bold text-sm">1. 작품 제목 입력</h2>
@@ -183,7 +186,7 @@ export default function App() {
         </p>
       </div>
 
-      {/* 2. 회차 & 분류 선택 상자 */}
+      {/* 2. 회차 (Episode) 및 분류 선택 상자 (원래 디자인 100% 보존) */}
       <div className="bg-white rounded-2xl p-5 shadow-lg">
         <label className="block text-slate-700 font-bold text-xs mb-2">회차 (Episode)</label>
         <input
@@ -202,13 +205,13 @@ export default function App() {
         </div>
       </div>
 
-      {/* 3. 전체 작품 목록 카드 */}
+      {/* 3. 전체 작품 목록 카드 (조회/필터링/정렬 기능 적용) */}
       <div className="bg-white rounded-2xl p-5 shadow-lg">
-        {/* 목록 헤더 및 정렬 옵션 */}
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-1.5 font-bold text-slate-800 text-sm">
             <span className="text-blue-500">📚</span> 전체 작품 목록 ({filteredAndSortedWorks.length})
           </div>
+          {/* 정렬 선택 창 */}
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value as SortOption)}
@@ -221,7 +224,7 @@ export default function App() {
           </select>
         </div>
 
-        {/* 12개 상태 가로 스크롤 탭 바 */}
+        {/* 12개 가로 스크롤 상태 탭 */}
         <div className="flex gap-1 overflow-x-auto pb-2 mb-3 scrollbar-none snap-x bg-slate-100 p-1 rounded-xl text-xs">
           {STATUS_TABS.map((tab) => {
             const isActive = selectedStatus === tab.id;
@@ -257,7 +260,6 @@ export default function App() {
                 key={work.id}
                 className="bg-white border border-slate-200/80 rounded-xl p-3 flex items-center justify-between shadow-xs hover:border-blue-300 transition-all"
               >
-                {/* 작품 제목 & 불꽃 */}
                 <div className="flex items-center gap-1.5 min-w-0 flex-1 pr-2">
                   <span className="font-bold text-slate-800 text-xs truncate">
                     {work.title}
@@ -267,7 +269,6 @@ export default function App() {
                   )}
                 </div>
 
-                {/* 회차, +1 버튼, 상태 라벨 */}
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-xs font-bold text-blue-600 min-w-[36px] text-right">
                     {work.episode}화
@@ -288,7 +289,7 @@ export default function App() {
         )}
       </div>
 
-      {/* 하단 관리 버튼 3개 (상단 카드의 폭과 완전히 일치) */}
+      {/* 하단 관리 버튼 3개 (상단 카드 폭에 맞춤) */}
       <div className="grid grid-cols-3 gap-2 w-full">
         <button
           onClick={() => alert('신규 등록 기능 준비 중입니다.')}
