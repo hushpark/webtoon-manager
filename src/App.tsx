@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
-// Supabase REST API 설정 (패키지 설치 없이 직접 연동)
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Supabase 클라이언트 생성
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface Work {
   id: string;
@@ -15,7 +17,7 @@ export interface Work {
   updated_at?: string;
 }
 
-// 12개 상태 탭 (맨 앞 '신규' 포함)
+// 12개 상태 탭 (신규 포함)
 const STATUS_TABS = [
   { id: 'NEW', label: '신규' },
   { id: 'ALL', label: '전체' },
@@ -40,24 +42,22 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortOption, setSortOption] = useState<SortOption>('title_asc');
 
-  // Supabase REST API 호출 - 데이터 로드
+  // DB에서 목록 로드
   const fetchWorks = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/works?select=*&order=title.asc`, {
-        headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
+      const { data, error } = await supabase
+        .from('works')
+        .select('*')
+        .order('title', { ascending: true });
+
+      if (error) {
+        console.error('로드 오류:', error.message);
+      } else if (data) {
         setWorks(data as Work[]);
-      } else {
-        console.error('데이터 로드 실패:', response.statusText);
       }
     } catch (err) {
-      console.error('네트워크 에러:', err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -67,12 +67,11 @@ export default function App() {
     fetchWorks();
   }, []);
 
-  // Supabase REST API 호출 - 회차 변경 및 불꽃 자동 제거
+  // 회차 증감 및 불꽃(🔥) 제거
   const updateEpisode = async (id: string, currentEp: number, delta: number) => {
     const nextEp = Math.max(0, currentEp + delta);
     const shouldRemoveFire = delta > 0;
 
-    // 화면 선반영 (UI 업데이트)
     setWorks((prev) =>
       prev.map((item) =>
         item.id === id
@@ -85,43 +84,31 @@ export default function App() {
       )
     );
 
-    // DB 업데이트 요청 객체
-    const payload: { episode: number; has_fire_emoji?: boolean } = { episode: nextEp };
+    const updateData: { episode: number; has_fire_emoji?: boolean } = { episode: nextEp };
     if (shouldRemoveFire) {
-      payload.has_fire_emoji = false;
+      updateData.has_fire_emoji = false;
     }
 
-    try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/works?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`,
-          Prefer: 'return=minimal',
-        },
-        body: JSON.stringify(payload),
-      });
+    const { error } = await supabase
+      .from('works')
+      .update(updateData)
+      .eq('id', id);
 
-      if (!response.ok) {
-        console.error('회차 업데이트 실패');
-        fetchWorks(); // 실패 시 원복
-      }
-    } catch (err) {
-      console.error('업데이트 에러:', err);
+    if (error) {
+      console.error('업데이트 실패:', error.message);
       fetchWorks();
     }
   };
 
   const cleanStr = (str: string) => str.replace(/\s+/g, '').toLowerCase();
 
-  // 필터링 및 정렬 로직
+  // 필터링 및 정렬
   const filteredAndSortedWorks = useMemo(() => {
     const now = new Date().getTime();
     const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 
     const filtered = works.filter((work) => {
-      // 1. 신규 탭: 14일 이내 & 불꽃(has_fire_emoji)이 켜져 있는 경우만
+      // 1. 신규 탭: 14일 이내 & 불꽃(has_fire_emoji)이 켜진 경우만
       if (selectedStatus === 'NEW') {
         if (!work.has_fire_emoji) return false;
 
@@ -129,18 +116,16 @@ export default function App() {
         if (!dateStr) return false;
 
         const workDate = new Date(dateStr).getTime();
-        const isWithinTwoWeeks = now - workDate <= TWO_WEEKS_MS;
-
-        if (!isWithinTwoWeeks) return false;
-      }
-      // 2. 개별 상태 탭 (엄격 매칭)
+        if (now - workDate > TWO_WEEKS_MS) return false;
+      } 
+      // 2. 개별 상태 탭
       else if (selectedStatus !== 'ALL') {
         const targetStatus = selectedStatus.replace(/\s+/g, '');
         const currentWorkStatus = (work.status || '').replace(/\s+/g, '');
         if (currentWorkStatus !== targetStatus) return false;
       }
 
-      // 3. 검색어 매칭
+      // 3. 검색어 필터링
       if (searchQuery.trim()) {
         const query = cleanStr(searchQuery);
         const titleMatch = cleanStr(work.title || '').includes(query);
@@ -154,7 +139,7 @@ export default function App() {
       return true;
     });
 
-    // 4. 정렬
+    // 정렬
     return filtered.sort((a, b) => {
       if (sortOption === 'title_asc') {
         return a.title.localeCompare(b.title, 'ko');
@@ -208,7 +193,7 @@ export default function App() {
           </select>
         </div>
 
-        {/* 12개 가로 스크롤 상태 탭 */}
+        {/* 12개 상태 탭 */}
         <div className="mb-4 flex gap-1.5 overflow-x-auto pb-2 scrollbar-none snap-x text-xs">
           {STATUS_TABS.map((tab) => {
             const isActive = selectedStatus === tab.id;
@@ -295,7 +280,7 @@ export default function App() {
         )}
       </div>
 
-      {/* 하단 관리 버튼 (너비 맞춤 적용) */}
+      {/* 하단 관리 버튼 */}
       <div className="mt-6 pt-4 border-t border-slate-800/80 grid grid-cols-3 gap-2 w-full max-w-md mx-auto">
         <button
           onClick={() => alert('신규 등록 기능 준비 중입니다.')}
