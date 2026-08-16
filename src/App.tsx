@@ -1,11 +1,17 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from './lib/supabase';
-import type { WorkStatus, Work, SearchState, ThemeType } from './types';
+import type { WorkStatus, Work as BaseWork, SearchState, ThemeType } from './types';
 import { THEME_STYLES } from './theme';
 import { 
   Search, PlusCircle, ArrowRightLeft, RotateCcw, 
   Lock, BookOpen, AlertCircle, Clock, Sparkles, X, Flame, Layers, Plus, Palette, Check, Trash2
 } from 'lucide-react';
+
+// TypeScript 빌드 에러 방지를 위한 Work 타입 확장 (created_at, updated_at 추가)
+export interface Work extends BaseWork {
+  created_at?: string;
+  updated_at?: string;
+}
 
 const NEW_WORK_STATUS_OPTIONS: WorkStatus[] = [
   '연재중', '완결', '시즌 완결', '휴재', '100회 미만', '휴지통'
@@ -345,7 +351,7 @@ export default function App() {
     return 'bg-slate-50 text-slate-800 border-slate-300';
   };
 
-  // 🔍 12개 상태 탭 조건별 필터링 및 정렬 로직 (빌드 타입 에러 완벽 해결)
+  // 🔍 12개 상태 탭 필터링 및 정렬 로직 (created_at, updated_at 완벽 연동)
   const filteredAndSortedWorks = useMemo(() => {
     const now = new Date().getTime();
     const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
@@ -739,7 +745,7 @@ export default function App() {
 
       </main>
 
-      {/* 하단 고정 스티키 액션 바 (너비 레이아웃 최적화) */}
+      {/* 하단 고정 스티키 액션 바 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 z-40 shadow-lg">
         <div className="max-w-xl mx-auto flex gap-2">
           <button
