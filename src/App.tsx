@@ -434,6 +434,7 @@ export default function App() {
         </div>
       </header>
 
+      {/* 메인 콘텐츠 영역 (max-w-xl 고정) */}
       <main className="max-w-xl mx-auto p-3.5 sm:p-6 space-y-4">
         
         {/* 1. 작품 검색 입력 */}
@@ -719,50 +720,53 @@ export default function App() {
 
       </main>
 
-      {/* 🎯 상단 카드 상자 패딩(p-3.5 sm:p-6)과 정확히 맞춘 하단 스티키 바 영역 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-3.5 sm:px-6 py-3">
-        <div className="max-w-xl mx-auto flex gap-2">
-          <button
-            onClick={handleRegister}
-            disabled={searchState.type !== 'NEW_WORK'}
-            className={`flex-1 py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
-              searchState.type === 'NEW_WORK'
-                ? `${themeStyles.secondaryBtn} text-white active:scale-95`
-                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
-            }`}
-          >
-            {searchState.type !== 'NEW_WORK' ? <Lock className="w-4 h-4 text-slate-400" /> : <PlusCircle className="w-4 h-4" />}
-            <span>신규 등록</span>
-          </button>
+      {/* 🎯 [핵심] 상단 상자 카드 패딩(p-3.5 sm:p-6)과 1px도 안 틀리고 똑같이 들어맞는 하단 스티키 바 */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg">
+        <div className="max-w-xl mx-auto p-3.5 sm:p-6 py-3">
+          <div className="flex gap-2 w-full">
+            <button
+              onClick={handleRegister}
+              disabled={searchState.type !== 'NEW_WORK'}
+              className={`flex-1 py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
+                searchState.type === 'NEW_WORK'
+                  ? `${themeStyles.secondaryBtn} text-white active:scale-95`
+                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
+              }`}
+            >
+              {searchState.type !== 'NEW_WORK' ? <Lock className="w-4 h-4 text-slate-400" /> : <PlusCircle className="w-4 h-4" />}
+              <span>신규 등록</span>
+            </button>
 
-          <button
-            onClick={handleMoveOrUpdate}
-            disabled={searchState.type !== 'EXACT_MATCH'}
-            className={`flex-1 py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
-              searchState.type === 'EXACT_MATCH'
-                ? `${themeStyles.primaryBtn} text-white active:scale-95`
-                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
-            }`}
-          >
-            {searchState.type !== 'EXACT_MATCH' ? <Lock className="w-4 h-4 text-slate-400" /> : <ArrowRightLeft className="w-4 h-4" />}
-            <span>이동 / 수정</span>
-          </button>
+            <button
+              onClick={handleMoveOrUpdate}
+              disabled={searchState.type !== 'EXACT_MATCH'}
+              className={`flex-1 py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
+                searchState.type === 'EXACT_MATCH'
+                  ? `${themeStyles.primaryBtn} text-white active:scale-95`
+                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
+              }`}
+            >
+              {searchState.type !== 'EXACT_MATCH' ? <Lock className="w-4 h-4 text-slate-400" /> : <ArrowRightLeft className="w-4 h-4" />}
+              <span>이동 / 수정</span>
+            </button>
 
-          <button
-            onClick={handleDeleteWork}
-            disabled={searchState.type !== 'EXACT_MATCH'}
-            className={`py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
-              searchState.type === 'EXACT_MATCH'
-                ? 'bg-rose-600 hover:bg-rose-700 text-white active:scale-95'
-                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
-            }`}
-            title="데이터베이스에서 완전히 삭제"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span className="hidden sm:inline">작품 삭제</span>
-          </button>
+            <button
+              onClick={handleDeleteWork}
+              disabled={searchState.type !== 'EXACT_MATCH'}
+              className={`py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
+                searchState.type === 'EXACT_MATCH'
+                  ? 'bg-rose-600 hover:bg-rose-700 text-white active:scale-95'
+                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
+              }`}
+              title="데이터베이스에서 완전히 삭제"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="hidden sm:inline">작품 삭제</span>
+            </button>
+          </div>
         </div>
       </div>
+
     </div>
   );
 }
