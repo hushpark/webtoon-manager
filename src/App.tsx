@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl: string = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey: string = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface Work {
@@ -45,7 +45,7 @@ export default function App() {
   const [sortOption, setSortOption] = useState<SortOption>('title_asc');
 
   // Supabase DB 불러오기
-  const fetchWorks = async () => {
+  const fetchWorks = async (): Promise<void> => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -70,7 +70,7 @@ export default function App() {
   }, []);
 
   // 회차 증감 및 불꽃(🔥) 제거
-  const updateEpisode = async (id: string, currentEp: number, delta: number) => {
+  const updateEpisode = async (id: string, currentEp: number, delta: number): Promise<void> => {
     const nextEp = Math.max(0, currentEp + delta);
     const shouldRemoveFire = delta > 0;
 
@@ -103,7 +103,7 @@ export default function App() {
     }
   };
 
-  const cleanStr = (str: string) => str.replace(/\s+/g, '').toLowerCase();
+  const cleanStr = (str: string): string => str.replace(/\s+/g, '').toLowerCase();
 
   // 🔍 조회 목록 필터링 및 정렬 로직
   const filteredAndSortedWorks = useMemo(() => {
@@ -157,7 +157,7 @@ export default function App() {
     });
   }, [works, selectedStatus, searchQuery, sortOption]);
 
-  const formatStatusLabel = (status?: string) => {
+  const formatStatusLabel = (status?: string): string => {
     if (!status) return '기타';
     return status.replace('_', '-');
   };
@@ -165,7 +165,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#0d1322] text-slate-800 p-4 max-w-xl mx-auto flex flex-col gap-4 font-sans">
       
-      {/* 1. 작품 제목 입력 상자 (원래 디자인 100% 보존) */}
+      {/* 1. 작품 제목 입력 상자 */}
       <div className="bg-white rounded-2xl p-5 shadow-lg">
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-blue-600 font-bold text-sm">1. 작품 제목 입력</h2>
@@ -177,7 +177,7 @@ export default function App() {
             type="text"
             placeholder="작품 제목을 입력하세요..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-slate-700 text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-all placeholder-slate-400"
           />
         </div>
@@ -186,14 +186,14 @@ export default function App() {
         </p>
       </div>
 
-      {/* 2. 회차 (Episode) 및 분류 선택 상자 (원래 디자인 100% 보존) */}
+      {/* 2. 회차 (Episode) 및 분류 선택 상자 */}
       <div className="bg-white rounded-2xl p-5 shadow-lg">
         <label className="block text-slate-700 font-bold text-xs mb-2">회차 (Episode)</label>
         <input
           type="text"
           placeholder="숫자 입력"
           value={episodeInput}
-          onChange={(e) => setEpisodeInput(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEpisodeInput(e.target.value)}
           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700 text-sm mb-3 focus:outline-none focus:border-blue-500 focus:bg-white transition-all placeholder-slate-400"
         />
         <div className="flex justify-between items-center mb-2">
@@ -205,16 +205,15 @@ export default function App() {
         </div>
       </div>
 
-      {/* 3. 전체 작품 목록 카드 (조회/필터링/정렬 기능 적용) */}
+      {/* 3. 전체 작품 목록 카드 */}
       <div className="bg-white rounded-2xl p-5 shadow-lg">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-1.5 font-bold text-slate-800 text-sm">
             <span className="text-blue-500">📚</span> 전체 작품 목록 ({filteredAndSortedWorks.length})
           </div>
-          {/* 정렬 선택 창 */}
           <select
             value={sortOption}
-            onChange={(e) => setSortOption(e.target.value as SortOption)}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSortOption(e.target.value as SortOption)}
             className="bg-slate-50 border border-slate-200 text-slate-600 text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="title_asc">이름 (ㄱ-ㅎ)</option>
@@ -289,7 +288,7 @@ export default function App() {
         )}
       </div>
 
-      {/* 하단 관리 버튼 3개 (상단 카드 폭에 맞춤) */}
+      {/* 하단 관리 버튼 3개 */}
       <div className="grid grid-cols-3 gap-2 w-full">
         <button
           onClick={() => alert('신규 등록 기능 준비 중입니다.')}
