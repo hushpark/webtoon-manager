@@ -1,7 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase 클라이언트 생성
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -17,7 +16,7 @@ export interface Work {
   updated_at?: string;
 }
 
-// 12개 상태 탭 (신규 포함)
+// 12개 상태 탭 (맨 앞 '신규' 포함)
 const STATUS_TABS = [
   { id: 'NEW', label: '신규' },
   { id: 'ALL', label: '전체' },
@@ -40,9 +39,10 @@ export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedStatus, setSelectedStatus] = useState<string>('NEW');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [episodeInput, setEpisodeInput] = useState<string>('');
   const [sortOption, setSortOption] = useState<SortOption>('title_asc');
 
-  // DB에서 목록 로드
+  // 데이터 불러오기
   const fetchWorks = async () => {
     setLoading(true);
     try {
@@ -52,7 +52,7 @@ export default function App() {
         .order('title', { ascending: true });
 
       if (error) {
-        console.error('로드 오류:', error.message);
+        console.error('데이터 로드 실패:', error.message);
       } else if (data) {
         setWorks(data as Work[]);
       }
@@ -108,7 +108,7 @@ export default function App() {
     const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 
     const filtered = works.filter((work) => {
-      // 1. 신규 탭: 14일 이내 & 불꽃(has_fire_emoji)이 켜진 경우만
+      // 1. 신규 탭: 14일 이내 & 불꽃(has_fire_emoji)이 켜져 있는 작품만
       if (selectedStatus === 'NEW') {
         if (!work.has_fire_emoji) return false;
 
@@ -118,7 +118,7 @@ export default function App() {
         const workDate = new Date(dateStr).getTime();
         if (now - workDate > TWO_WEEKS_MS) return false;
       } 
-      // 2. 개별 상태 탭
+      // 2. 상태별 매칭 (엄격 구분)
       else if (selectedStatus !== 'ALL') {
         const targetStatus = selectedStatus.replace(/\s+/g, '');
         const currentWorkStatus = (work.status || '').replace(/\s+/g, '');
@@ -160,31 +160,59 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-4 max-w-md mx-auto flex flex-col justify-between">
-      <div>
-        {/* 헤더 */}
-        <header className="mb-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-white flex items-center gap-2">
-            📚 웹툰 관리 시스템
-          </h1>
-          <span className="text-xs px-2.5 py-1 bg-slate-800 rounded-full text-slate-400 border border-slate-700">
-            총 {filteredAndSortedWorks.length}개 / {works.length}개
-          </span>
-        </header>
-
-        {/* 검색창 & 정렬 드롭다운 */}
-        <div className="mb-4 flex gap-2">
+    <div className="min-h-screen bg-[#0d1322] text-slate-800 p-4 max-w-xl mx-auto flex flex-col gap-4 font-sans">
+      
+      {/* 1. 작품 제목 입력 상자 */}
+      <div className="bg-white rounded-2xl p-5 shadow-lg">
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-blue-600 font-bold text-sm">1. 작품 제목 입력</h2>
+          <span className="text-slate-400 text-xs">타이핑 시 자동완성</span>
+        </div>
+        <div className="relative mb-2">
+          <span className="absolute left-3.5 top-3 text-blue-500 font-bold text-base">🔍</span>
           <input
             type="text"
-            placeholder="제목/상태 검색..."
+            placeholder="작품 제목을 입력하세요..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-slate-800 border border-slate-700 text-white rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors min-w-0"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-slate-700 text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-all placeholder-slate-400"
           />
+        </div>
+        <p className="text-[11px] text-slate-400">
+          제목을 입력하세요. (핫키: Alt+1 신규등록, Alt+2 수정, Esc 초기화)
+        </p>
+      </div>
+
+      {/* 2. 회차 & 분류 선택 상자 */}
+      <div className="bg-white rounded-2xl p-5 shadow-lg">
+        <label className="block text-slate-700 font-bold text-xs mb-2">회차 (Episode)</label>
+        <input
+          type="text"
+          placeholder="숫자 입력"
+          value={episodeInput}
+          onChange={(e) => setEpisodeInput(e.target.value)}
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700 text-sm mb-3 focus:outline-none focus:border-blue-500 focus:bg-white transition-all placeholder-slate-400"
+        />
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-slate-700 font-bold text-xs">분류 선택</span>
+          <span className="text-slate-400 text-[11px]">버튼 클릭</span>
+        </div>
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center text-xs text-slate-400">
+          작품 검색 완료 후 선택할 수 있는 분류 버튼이 활성화됩니다.
+        </div>
+      </div>
+
+      {/* 3. 전체 작품 목록 카드 */}
+      <div className="bg-white rounded-2xl p-5 shadow-lg">
+        {/* 목록 헤더 및 정렬 옵션 */}
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center gap-1.5 font-bold text-slate-800 text-sm">
+            <span className="text-blue-500">📚</span> 전체 작품 목록 ({filteredAndSortedWorks.length})
+          </div>
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value as SortOption)}
-            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl px-2.5 py-2.5 focus:outline-none focus:border-blue-500 transition-colors shrink-0 cursor-pointer"
+            className="bg-slate-50 border border-slate-200 text-slate-600 text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-blue-500 cursor-pointer"
           >
             <option value="title_asc">이름 (ㄱ-ㅎ)</option>
             <option value="title_desc">이름 (ㅎ-ㄱ)</option>
@@ -193,18 +221,18 @@ export default function App() {
           </select>
         </div>
 
-        {/* 12개 상태 탭 */}
-        <div className="mb-4 flex gap-1.5 overflow-x-auto pb-2 scrollbar-none snap-x text-xs">
+        {/* 12개 상태 가로 스크롤 탭 바 */}
+        <div className="flex gap-1 overflow-x-auto pb-2 mb-3 scrollbar-none snap-x bg-slate-100 p-1 rounded-xl text-xs">
           {STATUS_TABS.map((tab) => {
             const isActive = selectedStatus === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => setSelectedStatus(tab.id)}
-                className={`px-3 py-2 rounded-xl font-medium whitespace-nowrap transition-all snap-start border ${
+                className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all snap-start ${
                   isActive
-                    ? 'bg-blue-600 border-blue-500 text-white font-semibold shadow-lg shadow-blue-900/40 scale-105'
-                    : 'bg-slate-800/80 border-slate-700/60 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                    ? 'bg-blue-600 text-white font-bold shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/60'
                 }`}
               >
                 {tab.label}
@@ -213,66 +241,46 @@ export default function App() {
           })}
         </div>
 
-        {/* 웹툰 목록 */}
+        {/* 작품 리스트 */}
         {loading ? (
-          <div className="text-center py-12 text-slate-500 text-sm">
+          <div className="text-center py-8 text-slate-400 text-xs">
             데이터를 불러오는 중입니다...
           </div>
         ) : filteredAndSortedWorks.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 text-sm">
+          <div className="text-center py-8 text-slate-400 text-xs">
             해당하는 작품이 없습니다.
           </div>
         ) : (
-          <div className="space-y-2.5">
+          <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
             {filteredAndSortedWorks.map((work) => (
               <div
                 key={work.id}
-                className="bg-slate-800/90 border border-slate-700/50 rounded-xl p-3.5 flex items-center justify-between shadow-md hover:border-slate-600 transition-all"
+                className="bg-white border border-slate-200/80 rounded-xl p-3 flex items-center justify-between shadow-xs hover:border-blue-300 transition-all"
               >
-                <div className="flex-1 pr-2 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold text-slate-100 truncate text-sm">
-                      {work.title}
-                    </span>
-                    {work.has_fire_emoji && (
-                      <span className="text-xs shrink-0">🔥</span>
-                    )}
-                  </div>
-                  <div className="mt-1">
-                    <span
-                      className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded-md border ${
-                        work.status?.startsWith('본거')
-                          ? 'bg-amber-950/40 text-amber-300 border-amber-800/50'
-                          : work.status === '연재중'
-                          ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/50'
-                          : work.status === '휴재'
-                          ? 'bg-rose-950/40 text-rose-300 border-rose-800/50'
-                          : 'bg-slate-700/50 text-slate-300 border-slate-600/50'
-                      }`}
-                    >
-                      {formatStatusLabel(work.status)}
-                    </span>
-                  </div>
+                {/* 작품 제목 & 불꽃 */}
+                <div className="flex items-center gap-1.5 min-w-0 flex-1 pr-2">
+                  <span className="font-bold text-slate-800 text-xs truncate">
+                    {work.title}
+                  </span>
+                  {work.has_fire_emoji && (
+                    <span className="text-xs shrink-0">🔥</span>
+                  )}
                 </div>
 
+                {/* 회차, +1 버튼, 상태 라벨 */}
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-sm font-bold text-blue-400 min-w-[42px] text-right">
+                  <span className="text-xs font-bold text-blue-600 min-w-[36px] text-right">
                     {work.episode}화
                   </span>
-                  <div className="flex items-center bg-slate-900/80 rounded-lg p-0.5 border border-slate-700/80">
-                    <button
-                      onClick={() => updateEpisode(work.id, work.episode, -1)}
-                      className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-800 hover:text-white active:bg-slate-700 font-bold transition-colors"
-                    >
-                      -
-                    </button>
-                    <button
-                      onClick={() => updateEpisode(work.id, work.episode, 1)}
-                      className="w-7 h-7 flex items-center justify-center rounded-md text-blue-400 hover:bg-slate-800 hover:text-blue-300 active:bg-slate-700 font-bold transition-colors"
-                    >
-                      +1
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => updateEpisode(work.id, work.episode, 1)}
+                    className="border border-slate-300 hover:border-blue-500 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-600 text-xs font-semibold px-2.5 py-1 rounded-lg transition-all active:scale-95"
+                  >
+                    + 1
+                  </button>
+                  <span className="border border-slate-200 bg-slate-50 text-slate-500 text-[11px] px-2 py-1 rounded-lg min-w-[64px] text-center">
+                    {formatStatusLabel(work.status)}
+                  </span>
                 </div>
               </div>
             ))}
@@ -280,27 +288,28 @@ export default function App() {
         )}
       </div>
 
-      {/* 하단 관리 버튼 */}
-      <div className="mt-6 pt-4 border-t border-slate-800/80 grid grid-cols-3 gap-2 w-full max-w-md mx-auto">
+      {/* 하단 관리 버튼 3개 (상단 카드의 폭과 완전히 일치) */}
+      <div className="grid grid-cols-3 gap-2 w-full">
         <button
           onClick={() => alert('신규 등록 기능 준비 중입니다.')}
-          className="flex items-center justify-center gap-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl py-2.5 text-xs font-medium transition-all shadow-sm"
+          className="flex items-center justify-center gap-1 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-xl py-3 text-xs font-semibold transition-all shadow-sm active:scale-98"
         >
           🔒 신규 등록
         </button>
         <button
           onClick={() => alert('이동/수정 기능 준비 중입니다.')}
-          className="flex items-center justify-center gap-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl py-2.5 text-xs font-medium transition-all shadow-sm"
+          className="flex items-center justify-center gap-1 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-xl py-3 text-xs font-semibold transition-all shadow-sm active:scale-98"
         >
           🔒 이동 / 수정
         </button>
         <button
           onClick={() => alert('삭제 기능 준비 중입니다.')}
-          className="flex items-center justify-center gap-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl py-2.5 text-xs font-medium transition-all shadow-sm"
+          className="flex items-center justify-center gap-1 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-xl py-3 text-xs font-semibold transition-all shadow-sm active:scale-98"
         >
           🗑️ 작품 삭제
         </button>
       </div>
+
     </div>
   );
 }
