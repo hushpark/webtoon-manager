@@ -31,7 +31,6 @@ const STATUS_TABS = [
   { id: '휴지통', label: '휴지통' },
 ];
 
-// 정렬 옵션 타입 정의
 type SortOption = 'title_asc' | 'title_desc' | 'ep_desc' | 'ep_asc';
 
 export default function App() {
@@ -75,18 +74,15 @@ export default function App() {
 
     if (error) {
       console.error('회차 업데이트 실패:', error.message);
-      fetchWorks(); // 실패 시 원복
+      fetchWorks();
     }
   };
 
-  // 공백 제거용 클린 함수
   const cleanStr = (str: string) => str.replace(/\s+/g, '').toLowerCase();
 
   // 🔍 상태별 필터링 + 검색어 필터링 + 정렬 로직
   const filteredAndSortedWorks = useMemo(() => {
-    // 1. 필터링 (상태 및 검색어)
     const filtered = works.filter((work) => {
-      // 상태 탭 필터링 (엄격 매칭)
       if (selectedStatus !== 'ALL') {
         const targetStatus = selectedStatus.replace(/\s+/g, '');
         const currentWorkStatus = (work.status || '').replace(/\s+/g, '');
@@ -96,7 +92,6 @@ export default function App() {
         }
       }
 
-      // 검색어 필터링
       if (searchQuery.trim()) {
         const query = cleanStr(searchQuery);
         const titleMatch = cleanStr(work.title).includes(query);
@@ -109,7 +104,6 @@ export default function App() {
       return true;
     });
 
-    // 2. 정렬 (이름/회차 오름차순/내림차순)
     return filtered.sort((a, b) => {
       if (sortOption === 'title_asc') {
         return a.title.localeCompare(b.title, 'ko');
@@ -124,134 +118,157 @@ export default function App() {
     });
   }, [works, selectedStatus, searchQuery, sortOption]);
 
-  // 상태명 화면 표시 변환 함수
   const formatStatusLabel = (status: string) => {
     if (!status) return '기타';
     return status.replace('_', '-');
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-4 max-w-md mx-auto">
-      {/* 헤더 */}
-      <header className="mb-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-white flex items-center gap-2">
-          📚 웹툰 관리 시스템
-        </h1>
-        <span className="text-xs px-2 py-1 bg-slate-800 rounded-full text-slate-400">
-          총 {filteredAndSortedWorks.length}개 / {works.length}개
-        </span>
-      </header>
+    <div className="min-h-screen bg-slate-900 text-slate-100 p-4 max-w-md mx-auto flex flex-col justify-between">
+      <div>
+        {/* 헤더 */}
+        <header className="mb-4 flex justify-between items-center">
+          <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            📚 웹툰 관리 시스템
+          </h1>
+          <span className="text-xs px-2 py-1 bg-slate-800 rounded-full text-slate-400">
+            총 {filteredAndSortedWorks.length}개 / {works.length}개
+          </span>
+        </header>
 
-      {/* 검색창 & 정렬 드롭다운 */}
-      <div className="mb-4 flex gap-2">
-        <input
-          type="text"
-          placeholder="제목/상태 검색..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 bg-slate-800 border border-slate-700 text-white rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors min-w-0"
-        />
-        <select
-          value={sortOption}
-          onChange={(e) => setSortOption(e.target.value as SortOption)}
-          className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl px-2.5 py-2.5 focus:outline-none focus:border-blue-500 transition-colors shrink-0 cursor-pointer"
-        >
-          <option value="title_asc">이름 (ㄱ-ㅎ)</option>
-          <option value="title_desc">이름 (ㅎ-ㄱ)</option>
-          <option value="ep_desc">회차 높은순</option>
-          <option value="ep_asc">회차 낮은순</option>
-        </select>
-      </div>
-
-      {/* 11개 상태 가로 스크롤 탭 바 */}
-      <div className="mb-4 flex gap-1.5 overflow-x-auto pb-2 scrollbar-none snap-x text-xs">
-        {STATUS_TABS.map((tab) => {
-          const isActive = selectedStatus === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setSelectedStatus(tab.id)}
-              className={`px-3 py-2 rounded-xl font-medium whitespace-nowrap transition-all snap-start border ${
-                isActive
-                  ? 'bg-blue-600 border-blue-500 text-white font-semibold shadow-lg shadow-blue-900/40 scale-105'
-                  : 'bg-slate-800/80 border-slate-700/60 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
-              }`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 웹툰 목록 카드 */}
-      {loading ? (
-        <div className="text-center py-12 text-slate-500 text-sm">
-          데이터를 불러오는 중입니다...
+        {/* 검색창 & 정렬 드롭다운 */}
+        <div className="mb-4 flex gap-2">
+          <input
+            type="text"
+            placeholder="제목/상태 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-slate-800 border border-slate-700 text-white rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors min-w-0"
+          />
+          <select
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value as SortOption)}
+            className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl px-2.5 py-2.5 focus:outline-none focus:border-blue-500 transition-colors shrink-0 cursor-pointer"
+          >
+            <option value="title_asc">이름 (ㄱ-ㅎ)</option>
+            <option value="title_desc">이름 (ㅎ-ㄱ)</option>
+            <option value="ep_desc">회차 높은순</option>
+            <option value="ep_asc">회차 낮은순</option>
+          </select>
         </div>
-      ) : filteredAndSortedWorks.length === 0 ? (
-        <div className="text-center py-12 text-slate-500 text-sm">
-          해당하는 작품이 없습니다.
+
+        {/* 11개 상태 가로 스크롤 탭 바 */}
+        <div className="mb-4 flex gap-1.5 overflow-x-auto pb-2 scrollbar-none snap-x text-xs">
+          {STATUS_TABS.map((tab) => {
+            const isActive = selectedStatus === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setSelectedStatus(tab.id)}
+                className={`px-3 py-2 rounded-xl font-medium whitespace-nowrap transition-all snap-start border ${
+                  isActive
+                    ? 'bg-blue-600 border-blue-500 text-white font-semibold shadow-lg shadow-blue-900/40 scale-105'
+                    : 'bg-slate-800/80 border-slate-700/60 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
-      ) : (
-        <div className="space-y-2.5">
-          {filteredAndSortedWorks.map((work) => (
-            <div
-              key={work.id}
-              className="bg-slate-800/90 border border-slate-700/50 rounded-xl p-3.5 flex items-center justify-between shadow-md hover:border-slate-600 transition-all"
-            >
-              {/* 왼쪽: 제목 및 상태 태그 */}
-              <div className="flex-1 pr-2 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-semibold text-slate-100 truncate text-sm">
-                    {work.title}
-                  </span>
-                  {work.has_fire_emoji && (
-                    <span className="text-xs shrink-0" title="신규/업데이트">
-                      🔥
+
+        {/* 웹툰 목록 카드 */}
+        {loading ? (
+          <div className="text-center py-12 text-slate-500 text-sm">
+            데이터를 불러오는 중입니다...
+          </div>
+        ) : filteredAndSortedWorks.length === 0 ? (
+          <div className="text-center py-12 text-slate-500 text-sm">
+            해당하는 작품이 없습니다.
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {filteredAndSortedWorks.map((work) => (
+              <div
+                key={work.id}
+                className="bg-slate-800/90 border border-slate-700/50 rounded-xl p-3.5 flex items-center justify-between shadow-md hover:border-slate-600 transition-all"
+              >
+                {/* 왼쪽: 제목 및 상태 태그 */}
+                <div className="flex-1 pr-2 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-semibold text-slate-100 truncate text-sm">
+                      {work.title}
                     </span>
-                  )}
+                    {work.has_fire_emoji && (
+                      <span className="text-xs shrink-0" title="신규/업데이트">
+                        🔥
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1">
+                    <span
+                      className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded-md border ${
+                        work.status?.startsWith('본거')
+                          ? 'bg-amber-950/40 text-amber-300 border-amber-800/50'
+                          : work.status === '연재중'
+                          ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/50'
+                          : work.status === '휴재'
+                          ? 'bg-rose-950/40 text-rose-300 border-rose-800/50'
+                          : 'bg-slate-700/50 text-slate-300 border-slate-600/50'
+                      }`}
+                    >
+                      {formatStatusLabel(work.status)}
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-1">
-                  <span
-                    className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded-md border ${
-                      work.status?.startsWith('본거')
-                        ? 'bg-amber-950/40 text-amber-300 border-amber-800/50'
-                        : work.status === '연재중'
-                        ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/50'
-                        : work.status === '휴재'
-                        ? 'bg-rose-950/40 text-rose-300 border-rose-800/50'
-                        : 'bg-slate-700/50 text-slate-300 border-slate-600/50'
-                    }`}
-                  >
-                    {formatStatusLabel(work.status)}
-                  </span>
-                </div>
-              </div>
 
-              {/* 오른쪽: 회차 조작 버튼 */}
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-sm font-bold text-blue-400 min-w-[42px] text-right">
-                  {work.episode}화
-                </span>
-                <div className="flex items-center bg-slate-900/80 rounded-lg p-0.5 border border-slate-700/80">
-                  <button
-                    onClick={() => updateEpisode(work.id, work.episode, -1)}
-                    className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-800 hover:text-white active:bg-slate-700 font-bold transition-colors"
-                  >
-                    -
-                  </button>
-                  <button
-                    onClick={() => updateEpisode(work.id, work.episode, 1)}
-                    className="w-7 h-7 flex items-center justify-center rounded-md text-blue-400 hover:bg-slate-800 hover:text-blue-300 active:bg-slate-700 font-bold transition-colors"
-                  >
-                    +1
-                  </button>
+                {/* 오른쪽: 회차 조작 버튼 */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-sm font-bold text-blue-400 min-w-[42px] text-right">
+                    {work.episode}화
+                  </span>
+                  <div className="flex items-center bg-slate-900/80 rounded-lg p-0.5 border border-slate-700/80">
+                    <button
+                      onClick={() => updateEpisode(work.id, work.episode, -1)}
+                      className="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-800 hover:text-white active:bg-slate-700 font-bold transition-colors"
+                    >
+                      -
+                    </button>
+                    <button
+                      onClick={() => updateEpisode(work.id, work.episode, 1)}
+                      className="w-7 h-7 flex items-center justify-center rounded-md text-blue-400 hover:bg-slate-800 hover:text-blue-300 active:bg-slate-700 font-bold transition-colors"
+                    >
+                      +1
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 📌 하단 관리 버튼 (상단 카드 폭과 일치하도록 max-w-md mx-auto 적용) */}
+      <div className="mt-6 pt-4 border-t border-slate-800/80 grid grid-cols-3 gap-2 w-full max-w-md mx-auto">
+        <button
+          onClick={() => alert('신규 등록 기능 준비 중입니다.')}
+          className="flex items-center justify-center gap-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl py-2.5 text-xs font-medium transition-all shadow-sm"
+        >
+          🔒 신규 등록
+        </button>
+        <button
+          onClick={() => alert('이동/수정 기능 준비 중입니다.')}
+          className="flex items-center justify-center gap-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl py-2.5 text-xs font-medium transition-all shadow-sm"
+        >
+          🔒 이동 / 수정
+        </button>
+        <button
+          onClick={() => alert('삭제 기능 준비 중입니다.')}
+          className="flex items-center justify-center gap-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl py-2.5 text-xs font-medium transition-all shadow-sm"
+        >
+          🗑️ 작품 삭제
+        </button>
+      </div>
     </div>
   );
 }
