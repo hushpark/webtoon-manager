@@ -13,11 +13,13 @@ export interface Work {
   episode: number;
   status?: string;
   has_fire_emoji?: boolean;
+  created_at?: string;
   updated_at?: string;
 }
 
-// 11개 상태 탭 목록
+// 맨 앞에 '신규' 탭 포함 (총 12개 탭)
 const STATUS_TABS = [
+  { id: 'NEW', label: '신규' },
   { id: 'ALL', label: '전체' },
   { id: '본거_완결', label: '본거-완결' },
   { id: '본거_시즌완결', label: '본거-시즌완결' },
@@ -36,7 +38,7 @@ type SortOption = 'title_asc' | 'title_desc' | 'ep_desc' | 'ep_asc';
 export default function App() {
   const [works, setWorks] = useState<Work[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [selectedStatus, setSelectedStatus] = useState<string>('NEW');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortOption, setSortOption] = useState<SortOption>('title_asc');
 
@@ -65,20 +67,35 @@ export default function App() {
     fetchWorks();
   }, []);
 
-  // 회차 수정
+  // 회차 증감 및 불꽃(🔥) 제거 로직
   const updateEpisode = async (id: string, currentEp: number, delta: number) => {
     const nextEp = Math.max(0, currentEp + delta);
+    const shouldRemoveFire = delta > 0;
+
     setWorks((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, episode: nextEp } : item))
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              episode: nextEp,
+              has_fire_emoji: shouldRemoveFire ? false : item.has_fire_emoji,
+            }
+          : item
+      )
     );
+
+    const updateData: { episode: number; has_fire_emoji?: boolean } = { episode: nextEp };
+    if (shouldRemoveFire) {
+      updateData.has_fire_emoji = false;
+    }
 
     const { error } = await supabase
       .from('works')
-      .update({ episode: nextEp })
+      .update(updateData)
       .eq('id', id);
 
     if (error) {
-      console.error('회차 업데이트 실패:', error.message);
+      console.error('업데이트 실패:', error.message);
       fetchWorks();
     }
   };
@@ -87,15 +104,30 @@ export default function App() {
 
   // 필터링 및 정렬
   const filteredAndSortedWorks = useMemo(() => {
+    const now = new Date().getTime();
+    const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
+
     const filtered = works.filter((work) => {
-      // 1. 상태 탭 개별 분리
-      if (selectedStatus !== 'ALL') {
+      // 1. 신규 탭 조건: 14일 이내이면서 불꽃(has_fire_emoji)이 켜져 있는 경우만
+      if (selectedStatus === 'NEW') {
+        if (!work.has_fire_emoji) return false; // 회차 올리거나 불꽃 꺼지면 즉시 제외
+
+        const dateStr = work.created_at || work.updated_at;
+        if (!dateStr) return false;
+
+        const workDate = new Date(dateStr).getTime();
+        const isWithinTwoWeeks = now - workDate <= TWO_WEEKS_MS;
+
+        if (!isWithinTwoWeeks) return false;
+      } 
+      // 2. 다른 상태 탭 조건
+      else if (selectedStatus !== 'ALL') {
         const targetStatus = selectedStatus.replace(/\s+/g, '');
         const currentWorkStatus = (work.status || '').replace(/\s+/g, '');
         if (currentWorkStatus !== targetStatus) return false;
       }
 
-      // 2. 검색어 매칭
+      // 3. 검색어 매칭
       if (searchQuery.trim()) {
         const query = cleanStr(searchQuery);
         const titleMatch = cleanStr(work.title || '').includes(query);
@@ -109,7 +141,7 @@ export default function App() {
       return true;
     });
 
-    // 3. 정렬 (이름/회차)
+    // 정렬
     return filtered.sort((a, b) => {
       if (sortOption === 'title_asc') {
         return a.title.localeCompare(b.title, 'ko');
@@ -163,7 +195,7 @@ export default function App() {
           </select>
         </div>
 
-        {/* 11개 가로 스크롤 상태 탭 */}
+        {/* 12개 가로 스크롤 상태 탭 */}
         <div className="mb-4 flex gap-1.5 overflow-x-auto pb-2 scrollbar-none snap-x text-xs">
           {STATUS_TABS.map((tab) => {
             const isActive = selectedStatus === tab.id;
@@ -250,7 +282,7 @@ export default function App() {
         )}
       </div>
 
-      {/* 하단 버튼 3개 (폭 조절 적용) */}
+      {/* 하단 관리 버튼 */}
       <div className="mt-6 pt-4 border-t border-slate-800/80 grid grid-cols-3 gap-2 w-full max-w-md mx-auto">
         <button
           onClick={() => alert('신규 등록 기능 준비 중입니다.')}
