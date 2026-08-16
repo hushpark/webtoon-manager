@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase 클라이언트 설정 (환경 변수 사용)
+// Supabase 클라이언트 설정
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -9,14 +9,14 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export interface Work {
   id: string;
   title: string;
-  title_clean: string;
+  title_clean?: string;
   episode: number;
-  status: string;
-  has_fire_emoji: boolean;
+  status?: string;
+  has_fire_emoji?: boolean;
   updated_at?: string;
 }
 
-// 11개 상세 상태 탭 정의
+// 11개 상태 탭 목록
 const STATUS_TABS = [
   { id: 'ALL', label: '전체' },
   { id: '본거_완결', label: '본거-완결' },
@@ -40,27 +40,32 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortOption, setSortOption] = useState<SortOption>('title_asc');
 
-  // DB에서 작품 목록 불러오기
+  // DB에서 데이터 로드
   const fetchWorks = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('works')
-      .select('*')
-      .order('title', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('works')
+        .select('*')
+        .order('title', { ascending: true });
 
-    if (error) {
-      console.error('데이터 로드 실패:', error.message);
-    } else if (data) {
-      setWorks(data);
+      if (error) {
+        console.error('데이터 로드 실패:', error.message);
+      } else if (data) {
+        setWorks(data as Work[]);
+      }
+    } catch (err) {
+      console.error('에러 발생:', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
     fetchWorks();
   }, []);
 
-  // 회차 증감 업데이트 함수
+  // 회차 수정
   const updateEpisode = async (id: string, currentEp: number, delta: number) => {
     const nextEp = Math.max(0, currentEp + delta);
     setWorks((prev) =>
@@ -80,23 +85,23 @@ export default function App() {
 
   const cleanStr = (str: string) => str.replace(/\s+/g, '').toLowerCase();
 
-  // 🔍 상태별 필터링 + 검색어 필터링 + 정렬 로직
+  // 필터링 및 정렬
   const filteredAndSortedWorks = useMemo(() => {
     const filtered = works.filter((work) => {
+      // 1. 상태 탭 개별 분리
       if (selectedStatus !== 'ALL') {
         const targetStatus = selectedStatus.replace(/\s+/g, '');
         const currentWorkStatus = (work.status || '').replace(/\s+/g, '');
-
-        if (currentWorkStatus !== targetStatus) {
-          return false;
-        }
+        if (currentWorkStatus !== targetStatus) return false;
       }
 
+      // 2. 검색어 매칭
       if (searchQuery.trim()) {
         const query = cleanStr(searchQuery);
-        const titleMatch = cleanStr(work.title).includes(query);
+        const titleMatch = cleanStr(work.title || '').includes(query);
         const statusClean = cleanStr(work.status || '');
-        const statusMatch = statusClean === query || statusClean.replace('_', '-') === query;
+        const statusMatch =
+          statusClean === query || statusClean.replace('_', '-') === query;
 
         return titleMatch || statusMatch;
       }
@@ -104,6 +109,7 @@ export default function App() {
       return true;
     });
 
+    // 3. 정렬 (이름/회차)
     return filtered.sort((a, b) => {
       if (sortOption === 'title_asc') {
         return a.title.localeCompare(b.title, 'ko');
@@ -118,7 +124,7 @@ export default function App() {
     });
   }, [works, selectedStatus, searchQuery, sortOption]);
 
-  const formatStatusLabel = (status: string) => {
+  const formatStatusLabel = (status?: string) => {
     if (!status) return '기타';
     return status.replace('_', '-');
   };
@@ -131,7 +137,7 @@ export default function App() {
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
             📚 웹툰 관리 시스템
           </h1>
-          <span className="text-xs px-2 py-1 bg-slate-800 rounded-full text-slate-400">
+          <span className="text-xs px-2.5 py-1 bg-slate-800 rounded-full text-slate-400 border border-slate-700">
             총 {filteredAndSortedWorks.length}개 / {works.length}개
           </span>
         </header>
@@ -157,7 +163,7 @@ export default function App() {
           </select>
         </div>
 
-        {/* 11개 상태 가로 스크롤 탭 바 */}
+        {/* 11개 가로 스크롤 상태 탭 */}
         <div className="mb-4 flex gap-1.5 overflow-x-auto pb-2 scrollbar-none snap-x text-xs">
           {STATUS_TABS.map((tab) => {
             const isActive = selectedStatus === tab.id;
@@ -177,7 +183,7 @@ export default function App() {
           })}
         </div>
 
-        {/* 웹툰 목록 카드 */}
+        {/* 웹툰 목록 */}
         {loading ? (
           <div className="text-center py-12 text-slate-500 text-sm">
             데이터를 불러오는 중입니다...
@@ -193,16 +199,13 @@ export default function App() {
                 key={work.id}
                 className="bg-slate-800/90 border border-slate-700/50 rounded-xl p-3.5 flex items-center justify-between shadow-md hover:border-slate-600 transition-all"
               >
-                {/* 왼쪽: 제목 및 상태 태그 */}
                 <div className="flex-1 pr-2 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="font-semibold text-slate-100 truncate text-sm">
                       {work.title}
                     </span>
                     {work.has_fire_emoji && (
-                      <span className="text-xs shrink-0" title="신규/업데이트">
-                        🔥
-                      </span>
+                      <span className="text-xs shrink-0">🔥</span>
                     )}
                   </div>
                   <div className="mt-1">
@@ -222,7 +225,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 오른쪽: 회차 조작 버튼 */}
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-sm font-bold text-blue-400 min-w-[42px] text-right">
                     {work.episode}화
@@ -248,7 +250,7 @@ export default function App() {
         )}
       </div>
 
-      {/* 📌 하단 관리 버튼 (상단 카드 폭과 일치하도록 max-w-md mx-auto 적용) */}
+      {/* 하단 버튼 3개 (폭 조절 적용) */}
       <div className="mt-6 pt-4 border-t border-slate-800/80 grid grid-cols-3 gap-2 w-full max-w-md mx-auto">
         <button
           onClick={() => alert('신규 등록 기능 준비 중입니다.')}
