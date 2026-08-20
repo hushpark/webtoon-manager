@@ -18,7 +18,8 @@ import {
   Plus, 
   Palette, 
   Check, 
-  Trash2 
+  Trash2,
+  Copy
 } from 'lucide-react';
 
 export interface Work extends BaseWork {
@@ -63,6 +64,9 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading] = useState(false);
   
+  // 클립보드 복사 알림용 상태
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
   const [suggestions, setSuggestions] = useState<Work[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -172,6 +176,7 @@ export default function App() {
     }
   };
 
+  // 🎯 작품 선택 및 클립보드 복사 실행 함수
   const handleSelectSuggestion = (work: Work) => {
     setSearchInput(work.title);
     setShowSuggestions(false);
@@ -181,6 +186,14 @@ export default function App() {
     setSelectedRawButton(work.status);
     setLogs((prev) => Array.from(new Set([work.title, ...prev])).slice(0, 10));
     resetTimer();
+
+    // 📋 클립보드 복사 실행 및 안내 알림
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(work.title).then(() => {
+        setToastMessage(`📋 '${work.title}' 제목이 복사되었습니다.`);
+        setTimeout(() => setToastMessage(null), 2000);
+      }).catch(() => {});
+    }
   };
 
   const executeSearch = (query: string) => {
@@ -434,7 +447,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* 메인 콘텐츠 영역 (max-w-xl 고정) */}
+      {/* 메인 영역 */}
       <main className="max-w-xl mx-auto p-3.5 sm:p-6 space-y-4">
         
         {/* 1. 작품 검색 입력 */}
@@ -689,10 +702,14 @@ export default function App() {
                   key={work.id}
                   onClick={() => handleSelectSuggestion(work)}
                   className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group"
+                  title="클릭 시 선택 및 제목이 복사됩니다."
                 >
                   <div className="flex items-center gap-2 min-w-0 pr-2">
                     {work.has_fire_emoji && <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />}
-                    <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-black truncate">{work.title}</span>
+                    <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-indigo-600 truncate flex items-center gap-1.5">
+                      {work.title}
+                      <Copy className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    </span>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
@@ -718,11 +735,8 @@ export default function App() {
           </div>
         </section>
 
-      </main>
-
-      {/* 🎯 [핵심] 상단 상자 카드 패딩(p-3.5 sm:p-6)과 1px도 안 틀리고 똑같이 들어맞는 하단 스티키 바 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg">
-        <div className="max-w-xl mx-auto p-3.5 sm:p-6 py-3">
+        {/* 🎯 하단 버튼 카드 상자 */}
+        <section className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
           <div className="flex gap-2 w-full">
             <button
               onClick={handleRegister}
@@ -764,8 +778,17 @@ export default function App() {
               <span className="hidden sm:inline">작품 삭제</span>
             </button>
           </div>
+        </section>
+
+      </main>
+
+      {/* 📋 클립보드 복사 알림 토스트 팝업 */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xl z-50 flex items-center gap-2 backdrop-blur-sm border border-slate-700 animate-fade-in">
+          <Check className="w-4 h-4 text-emerald-400" />
+          <span>{toastMessage}</span>
         </div>
-      </div>
+      )}
 
     </div>
   );
