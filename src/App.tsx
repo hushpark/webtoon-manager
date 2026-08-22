@@ -64,7 +64,6 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading] = useState(false);
   
-  // 클립보드 복사 알림용 상태
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [suggestions, setSuggestions] = useState<Work[]>([]);
@@ -176,7 +175,6 @@ export default function App() {
     }
   };
 
-  // 🎯 작품 선택 및 클립보드 복사 실행 함수
   const handleSelectSuggestion = (work: Work) => {
     setSearchInput(work.title);
     setShowSuggestions(false);
@@ -187,7 +185,6 @@ export default function App() {
     setLogs((prev) => Array.from(new Set([work.title, ...prev])).slice(0, 10));
     resetTimer();
 
-    // 📋 클립보드 복사 실행 및 안내 알림
     if (navigator.clipboard) {
       navigator.clipboard.writeText(work.title).then(() => {
         setToastMessage(`📋 '${work.title}' 제목이 복사되었습니다.`);
@@ -735,56 +732,56 @@ export default function App() {
           </div>
         </section>
 
-        {/* 🎯 하단 버튼 카드 상자 */}
-        <section className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-          <div className="flex gap-2 w-full">
-            <button
-              onClick={handleRegister}
-              disabled={searchState.type !== 'NEW_WORK'}
-              className={`flex-1 py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
-                searchState.type === 'NEW_WORK'
-                  ? `${themeStyles.secondaryBtn} text-white active:scale-95`
-                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
-              }`}
-            >
-              {searchState.type !== 'NEW_WORK' ? <Lock className="w-4 h-4 text-slate-400" /> : <PlusCircle className="w-4 h-4" />}
-              <span>신규 등록</span>
-            </button>
-
-            <button
-              onClick={handleMoveOrUpdate}
-              disabled={searchState.type !== 'EXACT_MATCH'}
-              className={`flex-1 py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
-                searchState.type === 'EXACT_MATCH'
-                  ? `${themeStyles.primaryBtn} text-white active:scale-95`
-                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
-              }`}
-            >
-              {searchState.type !== 'EXACT_MATCH' ? <Lock className="w-4 h-4 text-slate-400" /> : <ArrowRightLeft className="w-4 h-4" />}
-              <span>이동 / 수정</span>
-            </button>
-
-            <button
-              onClick={handleDeleteWork}
-              disabled={searchState.type !== 'EXACT_MATCH'}
-              className={`py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
-                searchState.type === 'EXACT_MATCH'
-                  ? 'bg-rose-600 hover:bg-rose-700 text-white active:scale-95'
-                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
-              }`}
-              title="데이터베이스에서 완전히 삭제"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span className="hidden sm:inline">작품 삭제</span>
-            </button>
-          </div>
-        </section>
-
       </main>
+
+      {/* 🎯 화면 아래에 항상 딱 고정되는 하단 액션 버튼 바 */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-3.5 sm:px-6 py-3">
+        <div className="max-w-xl mx-auto flex gap-2">
+          <button
+            onClick={handleRegister}
+            disabled={searchState.type !== 'NEW_WORK'}
+            className={`flex-1 py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
+              searchState.type === 'NEW_WORK'
+                ? `${themeStyles.secondaryBtn} text-white active:scale-95`
+                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
+            }`}
+          >
+            {searchState.type !== 'NEW_WORK' ? <Lock className="w-4 h-4 text-slate-400" /> : <PlusCircle className="w-4 h-4" />}
+            <span>신규 등록</span>
+          </button>
+
+          <button
+            onClick={handleMoveOrUpdate}
+            disabled={searchState.type !== 'EXACT_MATCH'}
+            className={`flex-1 py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
+              searchState.type === 'EXACT_MATCH'
+                ? `${themeStyles.primaryBtn} text-white active:scale-95`
+                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
+            }`}
+          >
+            {searchState.type !== 'EXACT_MATCH' ? <Lock className="w-4 h-4 text-slate-400" /> : <ArrowRightLeft className="w-4 h-4" />}
+            <span>이동 / 수정</span>
+          </button>
+
+          <button
+            onClick={handleDeleteWork}
+            disabled={searchState.type !== 'EXACT_MATCH'}
+            className={`py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
+              searchState.type === 'EXACT_MATCH'
+                ? 'bg-rose-600 hover:bg-rose-700 text-white active:scale-95'
+                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
+            }`}
+            title="데이터베이스에서 완전히 삭제"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span className="hidden sm:inline">작품 삭제</span>
+          </button>
+        </div>
+      </div>
 
       {/* 📋 클립보드 복사 알림 토스트 팝업 */}
       {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xl z-50 flex items-center gap-2 backdrop-blur-sm border border-slate-700 animate-fade-in">
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xl z-50 flex items-center gap-2 backdrop-blur-sm border border-slate-700 animate-fade-in">
           <Check className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
