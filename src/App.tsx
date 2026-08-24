@@ -698,17 +698,19 @@ export default function App() {
                 <div 
                   key={work.id}
                   onClick={() => handleSelectSuggestion(work)}
-                  className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group"
+                  className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2"
                   title="클릭 시 선택 및 제목이 복사됩니다."
                 >
-                  <div className="flex items-center gap-2 min-w-0 pr-2">
+                  {/* 🎯 [개선] 줄바꿈 허용(break-words) 및 유연한 너비 적용으로 제목이 잘리지 않음 */}
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     {work.has_fire_emoji && <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />}
-                    <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-indigo-600 truncate flex items-center gap-1.5">
+                    <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-indigo-600 break-words leading-tight flex items-center gap-1.5">
                       {work.title}
                       <Copy className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </span>
                   </div>
 
+                  {/* 우측 회차/버튼 영역은 크기가 줄어들지 않게 고정 (shrink-0) */}
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={`w-14 text-right text-xs font-mono font-bold ${themeStyles.accentText}`}>
                       {work.episode}화
@@ -734,7 +736,7 @@ export default function App() {
 
       </main>
 
-      {/* 🎯 화면 아래에 항상 딱 고정되는 하단 액션 버튼 바 */}
+      {/* 화면 아래 고정 하단 액션 버튼 바 */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-3.5 sm:px-6 py-3">
         <div className="max-w-xl mx-auto flex gap-2">
           <button
