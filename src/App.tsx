@@ -243,6 +243,7 @@ export default function App() {
     }
   };
 
+  // 🎯 신규 등록 완료 메시지에 [작품 제목] 추가
   const handleRegister = async () => {
     if (searchState.type !== 'NEW_WORK') {
       setErrorMessage('⚠️ 미등록 신규 작품 상태일 때만 등록이 가능합니다.');
@@ -265,7 +266,7 @@ export default function App() {
     });
 
     if (!error) {
-      alert(`✅ 신규 등록 완료: [${selectedStatus}]`);
+      alert(`✅ 신규 등록 완료: '${title}' (${selectedStatus})`);
       handleReset();
       fetchAllWorks();
     } else {
@@ -273,6 +274,7 @@ export default function App() {
     }
   };
 
+  // 🎯 이동 및 수정 완료 메시지에 [작품 제목] 추가
   const handleMoveOrUpdate = async () => {
     if (searchState.type !== 'EXACT_MATCH') {
       setErrorMessage('⚠️ 등록된 작품 검색 상태일 때만 수정이 가능합니다.');
@@ -295,7 +297,7 @@ export default function App() {
       .eq('id', currentWork.id);
 
     if (!error) {
-      alert(`✅ 상태 이동 및 수정 완료 ➡️ [${selectedStatus}]`);
+      alert(`✅ 이동 및 수정 완료: '${currentWork.title}' ➡️ (${selectedStatus})`);
       handleReset();
       fetchAllWorks();
     } else {
@@ -701,7 +703,6 @@ export default function App() {
                   className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2"
                   title="클릭 시 선택 및 제목이 복사됩니다."
                 >
-                  {/* 🎯 [개선] 줄바꿈 허용(break-words) 및 유연한 너비 적용으로 제목이 잘리지 않음 */}
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     {work.has_fire_emoji && <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />}
                     <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-indigo-600 break-words leading-tight flex items-center gap-1.5">
@@ -710,7 +711,6 @@ export default function App() {
                     </span>
                   </div>
 
-                  {/* 우측 회차/버튼 영역은 크기가 줄어들지 않게 고정 (shrink-0) */}
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={`w-14 text-right text-xs font-mono font-bold ${themeStyles.accentText}`}>
                       {work.episode}화
