@@ -20,7 +20,8 @@ import {
   Check, 
   Trash2,
   Copy,
-  GripHorizontal
+  GripHorizontal,
+  Move
 } from 'lucide-react';
 
 export interface Work extends BaseWork {
@@ -76,15 +77,21 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('NEW');
   const [sortOption, setSortOption] = useState<SortOption>('title_asc');
 
-  // 목록 영역 높이 조절 (기본 320px)
+  // 목록 영역 높이 조절
   const [listHeight, setListHeight] = useState(320);
   const isResizingRef = useRef(false);
   const startYRef = useRef(0);
   const startHeightRef = useRef(320);
 
+  // 🎯 위치 이동(Floating Drag) 관련 상태
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const isDraggingBoxRef = useRef(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
+  const cardBoxRef = useRef<HTMLDivElement>(null);
 
   // 🖱️ 탭 가로 드래그 조작 Ref & State
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -130,17 +137,27 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchState, selectedStatus, episodeInput, searchInput]);
 
-  // 목록 높이 마우스 드래그 리사이즈
+  // 상자 높이 조절 및 전체 상자 이동 이벤트 리스너
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizingRef.current) return;
-      const deltaY = e.clientY - startYRef.current;
-      const newHeight = Math.max(160, Math.min(800, startHeightRef.current + deltaY));
-      setListHeight(newHeight);
+      // 1. 목록 높이 조절 중일 때
+      if (isResizingRef.current) {
+        const deltaY = e.clientY - startYRef.current;
+        const newHeight = Math.max(160, Math.min(800, startHeightRef.current + deltaY));
+        setListHeight(newHeight);
+      }
+      // 2. 전체 상자 드래그 이동 중일 때
+      else if (isDraggingBoxRef.current) {
+        setPosition({
+          x: e.clientX - dragOffsetRef.current.x,
+          y: e.clientY - dragOffsetRef.current.y
+        });
+      }
     };
 
     const handleMouseUp = () => {
       isResizingRef.current = false;
+      isDraggingBoxRef.current = false;
       document.body.style.cursor = 'default';
       document.body.style.userSelect = 'auto';
     };
@@ -152,6 +169,25 @@ export default function App() {
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, []);
+
+  // 상자 위치 이동 시작 (헤더 클릭 시)
+  const startDraggingBox = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).tagName === 'SELECT') return; // 정렬 옵션 선택 시 드래그 방지
+    isDraggingBoxRef.current = true;
+    
+    if (cardBoxRef.current) {
+      const rect = cardBoxRef.current.getBoundingClientRect();
+      dragOffsetRef.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+      if (!position) {
+        setPosition({ x: rect.left, y: rect.top });
+      }
+    }
+    document.body.style.cursor = 'move';
+    document.body.style.userSelect = 'none';
+  };
 
   const startResizing = (e: React.MouseEvent) => {
     isResizingRef.current = true;
@@ -393,7 +429,7 @@ export default function App() {
     }
   };
 
-  // 🖱️ 탭 마우스 드래그 조작 (드래그와 클릭 구분 처리)
+  // 🖱️ 탭 마우스 드래그 조작
   const handleTabMouseDown = (e: React.MouseEvent) => {
     if (!tabsRef.current) return;
     isDraggingTabRef.current = true;
@@ -417,12 +453,10 @@ export default function App() {
   };
 
   const handleTabClick = (tabId: string) => {
-    // 마우스 드래그 중이었으면 탭 변경 이벤트를 실행하지 않음
     if (hasMovedRef.current) return;
     setActiveTab(tabId);
   };
 
-  // 🖱️ 마우스 휠로 가로 스크롤 전환
   const handleTabWheel = (e: React.WheelEvent) => {
     if (!tabsRef.current) return;
     if (e.deltaY !== 0) {
@@ -731,27 +765,56 @@ export default function App() {
           </section>
         )}
 
-        {/* 📚 작품 목록 영역 */}
-        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative`}>
-          <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-            <span className="flex items-center gap-1.5">
+        {/* 📚 🎯 마우스로 자유롭게 이동 가능한 작품 목록 상자 */}
+        <section 
+          ref={cardBoxRef}
+          style={position ? {
+            position: 'fixed',
+            left: `${position.x}px`,
+            top: `${position.y}px`,
+            width: '100%',
+            maxWidth: '576px',
+            zIndex: 50
+          } : {}}
+          className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-xl space-y-3 transition-colors`}
+        >
+          {/* 🎯 상단 헤더: 잡고 잡아 끌면 이동하는 드래그 핸들 영역 */}
+          <div 
+            onMouseDown={startDraggingBox}
+            className="flex items-center justify-between text-xs font-bold text-slate-700 cursor-move select-none p-1.5 -m-1.5 rounded-t-xl hover:bg-slate-50 transition-colors group"
+            title="마우스로 상단을 잡고 끌면 자유롭게 화면에서 이동시킬 수 있습니다."
+          >
+            <span className="flex items-center gap-2">
+              <Move className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
               <Layers className={`w-4 h-4 ${themeStyles.accentText}`} />
               <span>전체 작품 목록 ({filteredAndSortedWorks.length})</span>
             </span>
 
-            <select
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value as SortOption)}
-              className="bg-slate-50 border border-slate-200 text-slate-600 text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer"
-            >
-              <option value="title_asc">이름 (ㄱ-ㅎ)</option>
-              <option value="title_desc">이름 (ㅎ-ㄱ)</option>
-              <option value="ep_desc">회차 높은순</option>
-              <option value="ep_asc">회차 낮은순</option>
-            </select>
+            <div className="flex items-center gap-2">
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as SortOption)}
+                className="bg-slate-50 border border-slate-200 text-slate-600 text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer"
+              >
+                <option value="title_asc">이름 (ㄱ-ㅎ)</option>
+                <option value="title_desc">이름 (ㅎ-ㄱ)</option>
+                <option value="ep_desc">회차 높은순</option>
+                <option value="ep_asc">회차 낮은순</option>
+              </select>
+
+              {position && (
+                <button
+                  onClick={() => setPosition(null)}
+                  className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-md transition-all"
+                  title="원래 위치로 맞춤"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* 🖱️ 마우스 휠 & 드래그 가로 스크롤 활성화된 탭 영역 */}
+          {/* 🖱️ 마우스 휠 & 드래그 가로 스크롤 탭 영역 */}
           <div 
             ref={tabsRef}
             onMouseDown={handleTabMouseDown}
@@ -779,7 +842,7 @@ export default function App() {
             })}
           </div>
 
-          {/* ↕️ 마우스 드래그로 조절되는 목록 창 */}
+          {/* ↕️ 높이 조절되는 목록 창 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -826,7 +889,7 @@ export default function App() {
             )}
           </div>
 
-          {/* ↕️ 높이 조절용 손잡이 (:::) */}
+          {/* ↕️ 높이 조절 손잡이 (:::) */}
           <div
             onMouseDown={startResizing}
             className="w-full pt-1 pb-0.5 cursor-row-resize flex flex-col items-center justify-center hover:bg-slate-100/80 rounded-b-xl border-t border-slate-100 transition-colors group"
@@ -838,7 +901,7 @@ export default function App() {
 
       </main>
 
-      {/* 화면 아래 고정 하단 액션 버튼 바 */}
+      {/* 하단 액션 버튼 바 */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-3.5 sm:px-6 py-3">
         <div className="max-w-xl mx-auto flex gap-2">
           <button
