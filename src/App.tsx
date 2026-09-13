@@ -19,7 +19,8 @@ import {
   Palette, 
   Check, 
   Trash2,
-  Copy
+  Copy,
+  GripHorizontal
 } from 'lucide-react';
 
 export interface Work extends BaseWork {
@@ -75,9 +76,21 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('NEW');
   const [sortOption, setSortOption] = useState<SortOption>('title_asc');
 
+  // 목록 영역 높이 조절용 상태 (기본값: 320px)
+  const [listHeight, setListHeight] = useState(320);
+  const isResizingRef = useRef(false);
+  const startYRef = useRef(0);
+  const startHeightRef = useRef(320);
+
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
+
+  // 🖱️ 탭 가로 드래그 스크롤 관련 Ref 및 State
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [isMouseDown, setIsMouseDown] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
 
   const cleanTitle = (str: string) => str.replace(/\s+/g, '').toLowerCase();
 
@@ -115,6 +128,37 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchState, selectedStatus, episodeInput, searchInput]);
+
+  // 목록 높이 마우스 드래그 이벤트 등록
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      const deltaY = e.clientY - startYRef.current;
+      const newHeight = Math.max(160, Math.min(800, startHeightRef.current + deltaY));
+      setListHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      isResizingRef.current = false;
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = 'auto';
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const startResizing = (e: React.MouseEvent) => {
+    isResizingRef.current = true;
+    startYRef.current = e.clientY;
+    startHeightRef.current = listHeight;
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+  };
 
   const resetTimer = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -243,7 +287,6 @@ export default function App() {
     }
   };
 
-  // 🎯 신규 등록 완료 메시지에 [작품 제목] 추가
   const handleRegister = async () => {
     if (searchState.type !== 'NEW_WORK') {
       setErrorMessage('⚠️ 미등록 신규 작품 상태일 때만 등록이 가능합니다.');
@@ -274,7 +317,6 @@ export default function App() {
     }
   };
 
-  // 🎯 이동 및 수정 완료 메시지에 [작품 제목] 추가
   const handleMoveOrUpdate = async () => {
     if (searchState.type !== 'EXACT_MATCH') {
       setErrorMessage('⚠️ 등록된 작품 검색 상태일 때만 수정이 가능합니다.');
@@ -347,6 +389,33 @@ export default function App() {
       if (searchState.type === 'EXACT_MATCH' && searchState.work.id === work.id) {
         setEpisodeInput(nextEp);
       }
+    }
+  };
+
+  // 🖱️ 탭 가로 드래그 조작 이벤트
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!tabsRef.current) return;
+    setIsMouseDown(true);
+    setStartX(e.pageX - tabsRef.current.offsetLeft);
+    setScrollLeft(tabsRef.current.scrollLeft);
+  };
+
+  const handleMouseLeaveOrUp = () => {
+    setIsMouseDown(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isMouseDown || !tabsRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - tabsRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    tabsRef.current.scrollLeft = scrollLeft - walk;
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (!tabsRef.current) return;
+    if (e.deltaY !== 0) {
+      tabsRef.current.scrollLeft += e.deltaY;
     }
   };
 
@@ -446,7 +515,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* 메인 영역 */}
+      {/* 🎯 기본 1열 레이아웃 (max-w-xl) */}
       <main className="max-w-xl mx-auto p-3.5 sm:p-6 space-y-4">
         
         {/* 1. 작품 검색 입력 */}
@@ -514,7 +583,7 @@ export default function App() {
             )}
 
             {!loading && searchState.type === 'IDLE' && (
-              <p className="text-xs text-slate-400 py-0.5">제목을 입력하세요. (핫키: Alt+1 신규등록, Alt+2 수정, Esc 초기화)</p>
+              <p className="text-xs text-slate-400 py-0.5">제목을 입력하세요. (Alt+1 신규등록, Alt+2 수정, Esc 초기화)</p>
             )}
 
             {!loading && searchState.type === 'EXACT_MATCH' && (
@@ -652,7 +721,7 @@ export default function App() {
         )}
 
         {/* 📚 작품 목록 영역 */}
-        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors`}>
+        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative`}>
           <div className="flex items-center justify-between text-xs font-bold text-slate-700">
             <span className="flex items-center gap-1.5">
               <Layers className={`w-4 h-4 ${themeStyles.accentText}`} />
@@ -671,7 +740,16 @@ export default function App() {
             </select>
           </div>
 
-          <div className="flex gap-1.5 overflow-x-auto pb-2.5 bg-slate-100 p-1.5 rounded-xl text-xs font-bold touch-pan-x">
+          {/* 🖱️ 마우스 드래그 및 휠 가로 조작 탭 바 */}
+          <div 
+            ref={tabsRef}
+            onMouseDown={handleMouseDown}
+            onMouseLeave={handleMouseLeaveOrUp}
+            onMouseUp={handleMouseLeaveOrUp}
+            onMouseMove={handleMouseMove}
+            onWheel={handleWheel}
+            className="flex gap-1.5 overflow-x-auto pb-2.5 bg-slate-100 p-1.5 rounded-xl text-xs font-bold cursor-grab active:cursor-grabbing select-none touch-pan-x"
+          >
             {STATUS_TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -690,7 +768,11 @@ export default function App() {
             })}
           </div>
 
-          <div className="space-y-1.5 max-h-80 overflow-y-auto pr-0.5">
+          {/* ↕️ 높이 조절 가능한 리스트 영역 */}
+          <div 
+            style={{ height: `${listHeight}px` }} 
+            className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
+          >
             {filteredAndSortedWorks.length === 0 ? (
               <div className="p-4 text-center text-xs text-slate-400 italic">
                 해당 분류의 작품이 없습니다.
@@ -731,6 +813,15 @@ export default function App() {
                 </div>
               ))
             )}
+          </div>
+
+          {/* ↕️ 마우스 드래그로 목록 개수/높이를 조절할 수 있는 리사이즈 핸들 */}
+          <div
+            onMouseDown={startResizing}
+            className="w-full pt-1 pb-0.5 cursor-row-resize flex flex-col items-center justify-center hover:bg-slate-100/80 rounded-b-xl border-t border-slate-100 transition-colors group"
+            title="마우스로 아래위로 잡아서 드래그하면 보이는 목록 높이(개수)를 조절할 수 있습니다."
+          >
+            <GripHorizontal className="w-5 h-5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
           </div>
         </section>
 
