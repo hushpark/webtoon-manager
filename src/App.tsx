@@ -137,16 +137,13 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchState, selectedStatus, episodeInput, searchInput]);
 
-  // 상자 높이 조절 및 전체 상자 이동 이벤트 리스너
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      // 1. 목록 높이 조절 중일 때
       if (isResizingRef.current) {
         const deltaY = e.clientY - startYRef.current;
         const newHeight = Math.max(160, Math.min(800, startHeightRef.current + deltaY));
         setListHeight(newHeight);
       }
-      // 2. 전체 상자 드래그 이동 중일 때
       else if (isDraggingBoxRef.current) {
         setPosition({
           x: e.clientX - dragOffsetRef.current.x,
@@ -170,9 +167,8 @@ export default function App() {
     };
   }, []);
 
-  // 상자 위치 이동 시작 (헤더 클릭 시)
   const startDraggingBox = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).tagName === 'SELECT') return; // 정렬 옵션 선택 시 드래그 방지
+    if ((e.target as HTMLElement).tagName === 'SELECT') return;
     isDraggingBoxRef.current = true;
     
     if (cardBoxRef.current) {
@@ -429,7 +425,6 @@ export default function App() {
     }
   };
 
-  // 🖱️ 탭 마우스 드래그 조작
   const handleTabMouseDown = (e: React.MouseEvent) => {
     if (!tabsRef.current) return;
     isDraggingTabRef.current = true;
@@ -560,7 +555,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* 메인 1열 카드 레이아웃 */}
+      {/* 🎯 가운데 정렬 지원 메인 영역 */}
       <main className="max-w-xl mx-auto p-3.5 sm:p-6 space-y-4">
         
         {/* 1. 작품 검색 입력 */}
@@ -765,7 +760,7 @@ export default function App() {
           </section>
         )}
 
-        {/* 📚 🎯 마우스로 자유롭게 이동 가능한 작품 목록 상자 */}
+        {/* 📚 마우스 드래그 이동 가능한 전체 작품 목록 카드 */}
         <section 
           ref={cardBoxRef}
           style={position ? {
@@ -778,11 +773,11 @@ export default function App() {
           } : {}}
           className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-xl space-y-3 transition-colors`}
         >
-          {/* 🎯 상단 헤더: 잡고 잡아 끌면 이동하는 드래그 핸들 영역 */}
+          {/* 상단 드래그 헤더 */}
           <div 
             onMouseDown={startDraggingBox}
             className="flex items-center justify-between text-xs font-bold text-slate-700 cursor-move select-none p-1.5 -m-1.5 rounded-t-xl hover:bg-slate-50 transition-colors group"
-            title="마우스로 상단을 잡고 끌면 자유롭게 화면에서 이동시킬 수 있습니다."
+            title="마우스로 상단을 잡고 끌면 원하는 위치로 이동합니다."
           >
             <span className="flex items-center gap-2">
               <Move className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
@@ -806,7 +801,7 @@ export default function App() {
                 <button
                   onClick={() => setPosition(null)}
                   className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-md transition-all"
-                  title="원래 위치로 맞춤"
+                  title="기본 위치로 복원"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>
@@ -814,7 +809,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* 🖱️ 마우스 휠 & 드래그 가로 스크롤 탭 영역 */}
+          {/* 탭 영역 */}
           <div 
             ref={tabsRef}
             onMouseDown={handleTabMouseDown}
@@ -842,7 +837,7 @@ export default function App() {
             })}
           </div>
 
-          {/* ↕️ 높이 조절되는 목록 창 */}
+          {/* 목록 표시 창 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -889,7 +884,7 @@ export default function App() {
             )}
           </div>
 
-          {/* ↕️ 높이 조절 손잡이 (:::) */}
+          {/* 높이 조절 손잡이 */}
           <div
             onMouseDown={startResizing}
             className="w-full pt-1 pb-0.5 cursor-row-resize flex flex-col items-center justify-center hover:bg-slate-100/80 rounded-b-xl border-t border-slate-100 transition-colors group"
@@ -901,7 +896,7 @@ export default function App() {
 
       </main>
 
-      {/* 하단 액션 버튼 바 */}
+      {/* 하단 고정 액션 버튼 바 */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-3.5 sm:px-6 py-3">
         <div className="max-w-xl mx-auto flex gap-2">
           <button
