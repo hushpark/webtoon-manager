@@ -121,17 +121,10 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 키보드 단축키 이벤트 (Ctrl+S / Cmd+S 포함)
+  // 🎯 키보드 단축키 이벤트 (Alt+1, Alt+2, Esc 전용)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        if (searchState.type === 'NEW_WORK') {
-          handleRegister();
-        } else if (searchState.type === 'EXACT_MATCH') {
-          handleMoveOrUpdate();
-        }
-      } else if (e.key === 'Escape') {
+      if (e.key === 'Escape') {
         handleReset();
       } else if (e.altKey && e.key === '1') {
         e.preventDefault();
@@ -631,7 +624,19 @@ export default function App() {
             )}
 
             {!loading && searchState.type === 'IDLE' && (
-              <p className="text-xs text-slate-400 py-0.5">제목을 입력하세요. (단축키: Ctrl+S 저장, Esc 초기화)</p>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 py-0.5 flex-wrap">
+                <span>제목을 입력하세요.</span>
+                <span className="text-slate-300">|</span>
+                <span className="inline-flex items-center gap-1">
+                  신규: <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono font-bold text-slate-700">Alt+1</kbd>
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  수정: <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono font-bold text-slate-700">Alt+2</kbd>
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  초기화: <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono font-bold text-slate-700">Esc</kbd>
+                </span>
+              </div>
             )}
 
             {!loading && searchState.type === 'EXACT_MATCH' && (
@@ -642,8 +647,10 @@ export default function App() {
                     현재: {formatStatusLabel(searchState.work.status)}
                   </span>
                 </div>
-                <p className="text-[11px] text-blue-800 mt-1">
-                  등록되어 있는 작품입니다. 이동할 분류를 아래에서 선택하세요 (저장: Ctrl+S).
+                <p className="text-[11px] text-blue-800 mt-1 flex items-center gap-1">
+                  <span>등록된 작품입니다. 이동할 분류 선택 후</span>
+                  <kbd className="px-1.5 py-0.2 bg-blue-100 border border-blue-300 rounded text-[10px] font-mono font-bold text-blue-800">Alt+2</kbd>
+                  <span>를 누르세요.</span>
                 </p>
               </div>
             )}
@@ -653,8 +660,10 @@ export default function App() {
                 <div className="font-extrabold text-emerald-800 text-sm sm:text-base">
                   ⭕ 미등록 신규 작품입니다.
                 </div>
-                <p className="text-[11px] text-emerald-700 mt-0.5">
-                  아래에서 회차 및 분류를 선택한 후 Ctrl+S 또는 [신규 등록]을 눌러주세요.
+                <p className="text-[11px] text-emerald-700 mt-0.5 flex items-center gap-1">
+                  <span>회차 및 분류 선택 후</span>
+                  <kbd className="px-1.5 py-0.2 bg-emerald-100 border border-emerald-300 rounded text-[10px] font-mono font-bold text-emerald-800">Alt+1</kbd>
+                  <span>을 누르세요.</span>
                 </p>
               </div>
             )}
@@ -665,7 +674,6 @@ export default function App() {
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors`}>
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1">회차 (Episode)</label>
-            {/* 🎯 [개선] onFocus={(e) => e.target.select()} 추가로 클릭 시 숫자 전체 자동 선택 */}
             <input
               type="number"
               inputMode="numeric"
@@ -906,7 +914,7 @@ export default function App() {
 
       </main>
 
-      {/* 하단 고정 액션 버튼 바 */}
+      {/* 🎯 하단 고정 액션 버튼 바 (버튼 내 단축키 표기) */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-3.5 sm:px-6 py-3">
         <div className="max-w-xl mx-auto flex gap-2">
           <button
@@ -920,6 +928,7 @@ export default function App() {
           >
             {searchState.type !== 'NEW_WORK' ? <Lock className="w-4 h-4 text-slate-400" /> : <PlusCircle className="w-4 h-4" />}
             <span>신규 등록</span>
+            <span className="text-[11px] opacity-80 font-mono font-normal">(Alt+1)</span>
           </button>
 
           <button
@@ -933,6 +942,7 @@ export default function App() {
           >
             {searchState.type !== 'EXACT_MATCH' ? <Lock className="w-4 h-4 text-slate-400" /> : <ArrowRightLeft className="w-4 h-4" />}
             <span>이동 / 수정</span>
+            <span className="text-[11px] opacity-80 font-mono font-normal">(Alt+2)</span>
           </button>
 
           <button
