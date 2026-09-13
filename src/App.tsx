@@ -76,7 +76,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('NEW');
   const [sortOption, setSortOption] = useState<SortOption>('title_asc');
 
-  // 목록 영역 높이 조절용 상태 (기본값: 320px)
+  // 목록 영역 높이 조절 (기본 320px)
   const [listHeight, setListHeight] = useState(320);
   const isResizingRef = useRef(false);
   const startYRef = useRef(0);
@@ -86,11 +86,12 @@ export default function App() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
 
-  // 🖱️ 탭 가로 드래그 스크롤 관련 Ref 및 State
+  // 🖱️ 탭 가로 드래그 조작 Ref & State
   const tabsRef = useRef<HTMLDivElement>(null);
-  const [isMouseDown, setIsMouseDown] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
+  const isDraggingTabRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+  const hasMovedRef = useRef(false);
 
   const cleanTitle = (str: string) => str.replace(/\s+/g, '').toLowerCase();
 
@@ -129,7 +130,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchState, selectedStatus, episodeInput, searchInput]);
 
-  // 목록 높이 마우스 드래그 이벤트 등록
+  // 목록 높이 마우스 드래그 리사이즈
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizingRef.current) return;
@@ -392,27 +393,37 @@ export default function App() {
     }
   };
 
-  // 🖱️ 탭 가로 드래그 조작 이벤트
-  const handleMouseDown = (e: React.MouseEvent) => {
+  // 🖱️ 탭 마우스 드래그 조작 (드래그와 클릭 구분 처리)
+  const handleTabMouseDown = (e: React.MouseEvent) => {
     if (!tabsRef.current) return;
-    setIsMouseDown(true);
-    setStartX(e.pageX - tabsRef.current.offsetLeft);
-    setScrollLeft(tabsRef.current.scrollLeft);
+    isDraggingTabRef.current = true;
+    hasMovedRef.current = false;
+    startXRef.current = e.pageX - tabsRef.current.offsetLeft;
+    scrollLeftRef.current = tabsRef.current.scrollLeft;
   };
 
-  const handleMouseLeaveOrUp = () => {
-    setIsMouseDown(false);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isMouseDown || !tabsRef.current) return;
-    e.preventDefault();
+  const handleTabMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingTabRef.current || !tabsRef.current) return;
     const x = e.pageX - tabsRef.current.offsetLeft;
-    const walk = (x - startX) * 1.5;
-    tabsRef.current.scrollLeft = scrollLeft - walk;
+    const walk = (x - startXRef.current) * 1.5;
+    if (Math.abs(walk) > 4) {
+      hasMovedRef.current = true;
+    }
+    tabsRef.current.scrollLeft = scrollLeftRef.current - walk;
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
+  const handleTabMouseUpOrLeave = () => {
+    isDraggingTabRef.current = false;
+  };
+
+  const handleTabClick = (tabId: string) => {
+    // 마우스 드래그 중이었으면 탭 변경 이벤트를 실행하지 않음
+    if (hasMovedRef.current) return;
+    setActiveTab(tabId);
+  };
+
+  // 🖱️ 마우스 휠로 가로 스크롤 전환
+  const handleTabWheel = (e: React.WheelEvent) => {
     if (!tabsRef.current) return;
     if (e.deltaY !== 0) {
       tabsRef.current.scrollLeft += e.deltaY;
@@ -515,7 +526,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* 🎯 기본 1열 레이아웃 (max-w-xl) */}
+      {/* 메인 1열 카드 레이아웃 */}
       <main className="max-w-xl mx-auto p-3.5 sm:p-6 space-y-4">
         
         {/* 1. 작품 검색 입력 */}
@@ -740,22 +751,22 @@ export default function App() {
             </select>
           </div>
 
-          {/* 🖱️ 마우스 드래그 및 휠 가로 조작 탭 바 */}
+          {/* 🖱️ 마우스 휠 & 드래그 가로 스크롤 활성화된 탭 영역 */}
           <div 
             ref={tabsRef}
-            onMouseDown={handleMouseDown}
-            onMouseLeave={handleMouseLeaveOrUp}
-            onMouseUp={handleMouseLeaveOrUp}
-            onMouseMove={handleMouseMove}
-            onWheel={handleWheel}
-            className="flex gap-1.5 overflow-x-auto pb-2.5 bg-slate-100 p-1.5 rounded-xl text-xs font-bold cursor-grab active:cursor-grabbing select-none touch-pan-x"
+            onMouseDown={handleTabMouseDown}
+            onMouseMove={handleTabMouseMove}
+            onMouseUp={handleTabMouseUpOrLeave}
+            onMouseLeave={handleTabMouseUpOrLeave}
+            onWheel={handleTabWheel}
+            className="flex gap-1.5 overflow-x-auto pb-2.5 bg-slate-100 p-1.5 rounded-xl text-xs font-bold cursor-grab active:cursor-grabbing select-none"
           >
             {STATUS_TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabClick(tab.id)}
                   className={`px-3 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-all ${
                     isActive
                       ? `${themeStyles.headerBg} text-white shadow-xs`
@@ -768,7 +779,7 @@ export default function App() {
             })}
           </div>
 
-          {/* ↕️ 높이 조절 가능한 리스트 영역 */}
+          {/* ↕️ 마우스 드래그로 조절되는 목록 창 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -815,11 +826,11 @@ export default function App() {
             )}
           </div>
 
-          {/* ↕️ 마우스 드래그로 목록 개수/높이를 조절할 수 있는 리사이즈 핸들 */}
+          {/* ↕️ 높이 조절용 손잡이 (:::) */}
           <div
             onMouseDown={startResizing}
             className="w-full pt-1 pb-0.5 cursor-row-resize flex flex-col items-center justify-center hover:bg-slate-100/80 rounded-b-xl border-t border-slate-100 transition-colors group"
-            title="마우스로 아래위로 잡아서 드래그하면 보이는 목록 높이(개수)를 조절할 수 있습니다."
+            title="위아래로 드래그하면 보이는 목록 높이를 조절할 수 있습니다."
           >
             <GripHorizontal className="w-5 h-5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
           </div>
