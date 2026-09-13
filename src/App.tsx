@@ -83,7 +83,7 @@ export default function App() {
   const startYRef = useRef(0);
   const startHeightRef = useRef(320);
 
-  // 🎯 위치 이동(Floating Drag) 관련 상태
+  // 위치 이동(Floating Drag) 관련 상태
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
   const isDraggingBoxRef = useRef(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
@@ -93,7 +93,7 @@ export default function App() {
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const cardBoxRef = useRef<HTMLDivElement>(null);
 
-  // 🖱️ 탭 가로 드래그 조작 Ref & State
+  // 탭 가로 드래그 조작 Ref & State
   const tabsRef = useRef<HTMLDivElement>(null);
   const isDraggingTabRef = useRef(false);
   const startXRef = useRef(0);
@@ -121,9 +121,17 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // 키보드 단축키 이벤트 (Ctrl+S / Cmd+S 포함)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (searchState.type === 'NEW_WORK') {
+          handleRegister();
+        } else if (searchState.type === 'EXACT_MATCH') {
+          handleMoveOrUpdate();
+        }
+      } else if (e.key === 'Escape') {
         handleReset();
       } else if (e.altKey && e.key === '1') {
         e.preventDefault();
@@ -555,7 +563,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* 🎯 가운데 정렬 지원 메인 영역 */}
+      {/* 메인 영역 */}
       <main className="max-w-xl mx-auto p-3.5 sm:p-6 space-y-4">
         
         {/* 1. 작품 검색 입력 */}
@@ -623,7 +631,7 @@ export default function App() {
             )}
 
             {!loading && searchState.type === 'IDLE' && (
-              <p className="text-xs text-slate-400 py-0.5">제목을 입력하세요. (Alt+1 신규등록, Alt+2 수정, Esc 초기화)</p>
+              <p className="text-xs text-slate-400 py-0.5">제목을 입력하세요. (단축키: Ctrl+S 저장, Esc 초기화)</p>
             )}
 
             {!loading && searchState.type === 'EXACT_MATCH' && (
@@ -635,7 +643,7 @@ export default function App() {
                   </span>
                 </div>
                 <p className="text-[11px] text-blue-800 mt-1">
-                  등록되어 있는 작품입니다. 이동할 분류를 아래에서 선택하세요.
+                  등록되어 있는 작품입니다. 이동할 분류를 아래에서 선택하세요 (저장: Ctrl+S).
                 </p>
               </div>
             )}
@@ -646,7 +654,7 @@ export default function App() {
                   ⭕ 미등록 신규 작품입니다.
                 </div>
                 <p className="text-[11px] text-emerald-700 mt-0.5">
-                  아래에서 회차 및 분류 버튼을 선택한 후 [신규 등록]을 눌러주세요.
+                  아래에서 회차 및 분류를 선택한 후 Ctrl+S 또는 [신규 등록]을 눌러주세요.
                 </p>
               </div>
             )}
@@ -657,12 +665,14 @@ export default function App() {
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors`}>
           <div>
             <label className="block text-xs font-bold text-slate-600 mb-1">회차 (Episode)</label>
+            {/* 🎯 [개선] onFocus={(e) => e.target.select()} 추가로 클릭 시 숫자 전체 자동 선택 */}
             <input
               type="number"
               inputMode="numeric"
               className={`w-full p-3 border rounded-xl font-bold text-sm focus:outline-none transition-all ${getEpisodeBadgeColor(episodeInput)}`}
               placeholder="숫자 입력"
               value={episodeInput}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => setEpisodeInput(e.target.value ? Number(e.target.value) : '')}
             />
           </div>
