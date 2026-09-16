@@ -121,7 +121,7 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 🎯 키보드 단축키 이벤트 (Alt+1, Alt+2, Esc 전용)
+  // 키보드 단축키 이벤트 (Alt+1, Alt+2, Esc 전용)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -238,18 +238,20 @@ export default function App() {
     setSuggestions(matches);
     setShowSuggestions(true);
 
-    const exact = matches.find(w => cleanTitle(w.title) === cleaned);
-
-    if (exact) {
-      setSearchState({ type: 'EXACT_MATCH', work: exact });
-      setEpisodeInput(exact.episode);
-      setSelectedStatus(exact.status as WorkStatus);
-      setSelectedRawButton(exact.status);
-    } else {
-      setSearchState({ type: 'NEW_WORK', query: trimmed });
-      setSelectedStatus('');
-      setSelectedRawButton('');
-      setEpisodeInput('');
+    // EXACT_MATCH 상태를 유지하면서 타이핑한 제목으로 검색 상태 업데이트
+    if (searchState.type !== 'EXACT_MATCH') {
+      const exact = matches.find(w => cleanTitle(w.title) === cleaned);
+      if (exact) {
+        setSearchState({ type: 'EXACT_MATCH', work: exact });
+        setEpisodeInput(exact.episode);
+        setSelectedStatus(exact.status as WorkStatus);
+        setSelectedRawButton(exact.status);
+      } else {
+        setSearchState({ type: 'NEW_WORK', query: trimmed });
+        setSelectedStatus('');
+        setSelectedRawButton('');
+        setEpisodeInput('');
+      }
     }
   };
 
@@ -351,6 +353,7 @@ export default function App() {
     }
   };
 
+  // 🎯 제목 변경 업데이트 지원 수정 구문 (방법 1)
   const handleMoveOrUpdate = async () => {
     if (searchState.type !== 'EXACT_MATCH') {
       setErrorMessage('⚠️ 등록된 작품 검색 상태일 때만 수정이 가능합니다.');
@@ -362,10 +365,18 @@ export default function App() {
     }
 
     const currentWork = searchState.work;
+    const newTitle = searchInput.trim(); // 🎯 새로 수정된 제목 가져오기
+
+    if (!newTitle) {
+      setErrorMessage('⚠️ 작품 제목을 입력해 주세요.');
+      return;
+    }
 
     const { error } = await supabase
       .from('works')
       .update({
+        title: newTitle,                     // 🎯 제목 업데이트
+        title_clean: cleanTitle(newTitle),   // 🎯 검색용 청소 제목 업데이트
         status: selectedStatus,
         episode: Number(episodeInput) || 0,
         updated_at: new Date().toISOString()
@@ -373,7 +384,7 @@ export default function App() {
       .eq('id', currentWork.id);
 
     if (!error) {
-      alert(`✅ 이동 및 수정 완료: '${currentWork.title}' ➡️ (${selectedStatus})`);
+      alert(`✅ 이동 및 수정 완료: '${currentWork.title}' ➡️ '${newTitle}' (${selectedStatus})`);
       handleReset();
       fetchAllWorks();
     } else {
@@ -647,10 +658,10 @@ export default function App() {
                     현재: {formatStatusLabel(searchState.work.status)}
                   </span>
                 </div>
-                <p className="text-[11px] text-blue-800 mt-1 flex items-center gap-1">
-                  <span>등록된 작품입니다. 이동할 분류 선택 후</span>
+                <p className="text-[11px] text-blue-800 mt-1 flex items-center gap-1 flex-wrap">
+                  <span>제목/회차/분류를 변경하고</span>
                   <kbd className="px-1.5 py-0.2 bg-blue-100 border border-blue-300 rounded text-[10px] font-mono font-bold text-blue-800">Alt+2</kbd>
-                  <span>를 누르세요.</span>
+                  <span>를 누르면 내용 및 이름이 수정됩니다.</span>
                 </p>
               </div>
             )}
@@ -914,7 +925,7 @@ export default function App() {
 
       </main>
 
-      {/* 🎯 하단 고정 액션 버튼 바 (버튼 내 단축키 표기) */}
+      {/* 하단 고정 액션 버튼 바 */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-3.5 sm:px-6 py-3">
         <div className="max-w-xl mx-auto flex gap-2">
           <button
