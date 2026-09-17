@@ -235,12 +235,23 @@ export default function App() {
     const cleaned = cleanTitle(trimmed);
     const matches = allWorks.filter(w => cleanTitle(w.title).includes(cleaned));
 
-    setSuggestions(matches);
+    const sortedMatches = matches.sort((a, b) => {
+      const aClean = cleanTitle(a.title);
+      const bClean = cleanTitle(b.title);
+      const aStartsWith = aClean.startsWith(cleaned);
+      const bStartsWith = bClean.startsWith(cleaned);
+
+      if (aStartsWith && !bStartsWith) return -1;
+      if (!aStartsWith && bStartsWith) return 1;
+
+      return a.title.localeCompare(b.title, 'ko');
+    });
+
+    setSuggestions(sortedMatches);
     setShowSuggestions(true);
 
-    // EXACT_MATCH 상태를 유지하면서 타이핑한 제목으로 검색 상태 업데이트
     if (searchState.type !== 'EXACT_MATCH') {
-      const exact = matches.find(w => cleanTitle(w.title) === cleaned);
+      const exact = sortedMatches.find(w => cleanTitle(w.title) === cleaned);
       if (exact) {
         setSearchState({ type: 'EXACT_MATCH', work: exact });
         setEpisodeInput(exact.episode);
@@ -353,7 +364,6 @@ export default function App() {
     }
   };
 
-  // 🎯 제목 변경 업데이트 지원 수정 구문 (방법 1)
   const handleMoveOrUpdate = async () => {
     if (searchState.type !== 'EXACT_MATCH') {
       setErrorMessage('⚠️ 등록된 작품 검색 상태일 때만 수정이 가능합니다.');
@@ -365,7 +375,7 @@ export default function App() {
     }
 
     const currentWork = searchState.work;
-    const newTitle = searchInput.trim(); // 🎯 새로 수정된 제목 가져오기
+    const newTitle = searchInput.trim();
 
     if (!newTitle) {
       setErrorMessage('⚠️ 작품 제목을 입력해 주세요.');
@@ -375,8 +385,8 @@ export default function App() {
     const { error } = await supabase
       .from('works')
       .update({
-        title: newTitle,                     // 🎯 제목 업데이트
-        title_clean: cleanTitle(newTitle),   // 🎯 검색용 청소 제목 업데이트
+        title: newTitle,
+        title_clean: cleanTitle(newTitle),
         status: selectedStatus,
         episode: Number(episodeInput) || 0,
         updated_at: new Date().toISOString()
@@ -528,10 +538,10 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-28 transition-colors duration-300`}>
+    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-28 transition-colors duration-300 flex flex-col items-center`}>
       
       {/* 상단 헤더 */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-xs">
+      <header className="w-full sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-2.5">
           <div className={`p-2 ${themeStyles.headerBg} rounded-xl text-white shadow-md transition-colors`}>
             <BookOpen className="w-5 h-5" />
@@ -567,8 +577,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* 메인 영역 */}
-      <main className="max-w-xl mx-auto p-3.5 sm:p-6 space-y-4">
+      {/* 🎯 화면 중앙 정렬 보장 메인 컨테이너 */}
+      <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1">
         
         {/* 1. 작품 검색 입력 */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative`}>
@@ -602,22 +612,23 @@ export default function App() {
 
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden max-h-60 overflow-y-auto">
-                <div className="p-2 text-[10px] font-bold text-slate-400 bg-slate-50 border-b border-slate-100 uppercase">
-                  유사/추천 작품 ({suggestions.length}개)
+                <div className="p-2 text-[10px] font-bold text-slate-400 bg-slate-50 border-b border-slate-100 uppercase flex justify-between items-center">
+                  <span>연관 작품 ({suggestions.length}개)</span>
+                  <span className="text-[9px] text-slate-400 font-normal">가나다순 정렬됨</span>
                 </div>
                 {suggestions.map((work) => (
                   <div
                     key={work.id}
                     onClick={() => handleSelectSuggestion(work)}
-                    className="p-3 hover:bg-indigo-50/80 cursor-pointer border-b border-slate-100 last:border-none flex items-center justify-between transition-colors"
+                    className="p-3 hover:bg-indigo-50/80 cursor-pointer border-b border-slate-100 last:border-none flex items-center justify-between transition-colors gap-2"
                   >
-                    <div className="flex items-center gap-2">
-                      <Search className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-bold text-sm text-slate-800">{work.title}</span>
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span className="font-bold text-sm text-slate-800 truncate">{work.title}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono text-indigo-600">{work.episode}화</span>
-                      <span className="w-22 text-center text-[10px] bg-slate-100 text-slate-600 px-1 py-0.5 rounded font-semibold shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
+                      <span className="text-xs font-mono text-indigo-600 font-bold">{work.episode}화</span>
+                      <span className="w-20 text-center text-[10px] bg-slate-100 text-slate-600 px-1 py-0.5 rounded font-semibold truncate">
                         {formatStatusLabel(work.status)}
                       </span>
                     </div>
@@ -654,7 +665,7 @@ export default function App() {
               <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl text-xs sm:text-sm text-blue-900">
                 <div className="font-extrabold text-blue-700 text-sm sm:text-base flex items-center justify-between">
                   <span>🔎 '{searchState.work.title}'</span>
-                  <span className="bg-blue-600 text-white font-bold px-2 py-0.5 rounded text-xs shadow-xs">
+                  <span className="bg-blue-600 text-white font-bold px-2 py-0.5 rounded text-xs shadow-xs shrink-0">
                     현재: {formatStatusLabel(searchState.work.status)}
                   </span>
                 </div>
@@ -883,28 +894,30 @@ export default function App() {
                   className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2"
                   title="클릭 시 선택 및 제목이 복사됩니다."
                 >
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {/* 🎯 모바일 겹침 방지: 제목 영역 flex-1 및 break-words */}
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
                     {work.has_fire_emoji && <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />}
-                    <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-indigo-600 break-words leading-tight flex items-center gap-1.5">
+                    <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-indigo-600 break-words leading-snug">
                       {work.title}
-                      <Copy className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </span>
+                    <Copy className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`w-14 text-right text-xs font-mono font-bold ${themeStyles.accentText}`}>
+                  {/* 🎯 모바일 겹침 방지: 회차 및 상태 영역 고정 너비 및 shrink-0 whitespace-nowrap */}
+                  <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+                    <span className={`text-xs font-mono font-bold ${themeStyles.accentText} min-w-[42px] text-right`}>
                       {work.episode}화
                     </span>
                     
                     <button
                       onClick={(e) => handleQuickIncrementEpisode(work, e)}
-                      className="px-2 py-0.5 bg-white hover:bg-slate-800 text-slate-700 hover:text-white text-[11px] font-bold rounded border border-slate-300 transition-all flex items-center gap-0.5 shadow-2xs shrink-0 active:scale-95"
-                      title="+1화 빠른 업데이트 (불꽃 제거)"
+                      className="px-1.5 py-0.5 bg-white hover:bg-slate-800 text-slate-700 hover:text-white text-[11px] font-bold rounded border border-slate-300 transition-all flex items-center gap-0.5 shadow-2xs shrink-0 active:scale-95"
+                      title="+1화 빠른 업데이트"
                     >
                       <Plus className="w-3 h-3" />1
                     </button>
 
-                    <span className="w-22 text-center text-[10px] bg-white border border-slate-200 text-slate-600 px-1 py-0.5 rounded font-semibold truncate shrink-0">
+                    <span className="w-20 text-center text-[10px] bg-white border border-slate-200 text-slate-600 px-1 py-0.5 rounded font-semibold truncate shrink-0">
                       {formatStatusLabel(work.status)}
                     </span>
                   </div>
@@ -926,8 +939,8 @@ export default function App() {
       </main>
 
       {/* 하단 고정 액션 버튼 바 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-3.5 sm:px-6 py-3">
-        <div className="max-w-xl mx-auto flex gap-2">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-3.5 sm:px-6 py-3 flex justify-center">
+        <div className="w-full max-w-xl flex gap-2">
           <button
             onClick={handleRegister}
             disabled={searchState.type !== 'NEW_WORK'}
