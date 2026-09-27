@@ -1,0 +1,26 @@
+name: Supabase Keep Alive Ping (Multi-Project)
+
+on:
+  schedule:
+    # 3일마다 1회 실행 (Supabase 자동 정지 완벽 방지)
+    - cron: '0 0 */3 * *'
+  # 필요할 때 GitHub Actions 탭에서 수동 실행 가능
+  workflow_dispatch:
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Project 1
+        run: |
+          curl -s -X GET "${{ secrets.SUPABASE_URL_1 }}/rest/v1/?apikey=${{ secrets.SUPABASE_ANON_KEY_1 }}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY_1 }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY_1 }}"
+          echo "Project 1 Ping Successfully Sent!"
+
+      - name: Ping Supabase Project 2
+        run: |
+          curl -s -X GET "${{ secrets.SUPABASE_URL_2 }}/rest/v1/?apikey=${{ secrets.SUPABASE_ANON_KEY_2 }}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY_2 }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY_2 }}"
+          echo "Project 2 Ping Successfully Sent!"
