@@ -340,7 +340,7 @@ export default function App() {
           setSelectedStatus('본거_완결' as WorkStatus);
         }
       } else {
-        setErrorMessage('⚠️ 작품을 선택한 상태에서만 [본거] 지정이 가능합니다.');
+        setErrorMessage('⚠️️ 작품을 선택한 상태에서만 [본거] 지정이 가능합니다.');
       }
     } else {
       setSelectedStatus(btn as WorkStatus);
@@ -349,7 +349,7 @@ export default function App() {
 
   const handleRegister = async () => {
     if (searchState.type !== 'NEW_WORK') {
-      setErrorMessage('⚠️️ 미등록 신규 작품 상태일 때만 등록이 가능합니다.');
+      setErrorMessage('⚠️ 미등록 신규 작품 상태일 때만 등록이 가능합니다.');
       return;
     }
     if (!selectedStatus) {
@@ -629,7 +629,7 @@ export default function App() {
               </button>
             )}
 
-            {/* 🔍 연관 작품 자동완성 (우측 완전밀착 우측 정렬) */}
+            {/* 🔍 연관 작품 자동완성 (3단 분할 레이아웃 적용) */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto">
                 <div className="p-2.5 text-xs font-extrabold text-slate-500 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
@@ -648,11 +648,13 @@ export default function App() {
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
-                      <div className="bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[11px] font-bold text-amber-900 whitespace-nowrap font-mono tabular-nums text-right min-w-[110px] flex justify-end items-center gap-1">
-                        <span className="text-amber-600 font-extrabold">📌 {work.my_episode || 0}</span>
-                        <span className="text-amber-400 font-normal">/</span>
-                        <span>{work.episode}화</span>
+                      {/* 📐 3단 고정 컬럼 회차 박스 */}
+                      <div className="bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[11px] font-bold text-amber-900 font-mono tabular-nums flex items-center w-[115px]">
+                        <span className="w-12 text-right text-amber-600 font-extrabold">📌{work.my_episode || 0}</span>
+                        <span className="w-3 text-center text-amber-400 font-normal">/</span>
+                        <span className="w-12 text-right text-amber-900">{work.episode}화</span>
                       </div>
+
                       <span className="w-16 text-center text-[10px] bg-slate-100 text-slate-700 px-1 py-0.5 rounded font-bold border border-slate-200 truncate whitespace-nowrap">
                         {formatStatusLabel(work.status)}
                       </span>
@@ -921,7 +923,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 완전 무결 우측 밀착 정렬 적용 목록 영역 */}
+          {/* 📋 칼 정렬 3단 분할 레이아웃 적용 목록 영역 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-2 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -948,12 +950,19 @@ export default function App() {
                       <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
 
-                    {/* 📐 우측 벽 기준으로 완벽 정렬되는 회차 박스 */}
+                    {/* 📐 3단 고정 컬럼 회차 박스 (슬래시 위치 완벽 정렬) */}
                     <div className="flex items-center gap-1 shrink-0 whitespace-nowrap">
-                      <div className="bg-white border border-slate-200 px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold shadow-2xs flex items-center justify-end min-w-[105px] sm:min-w-[120px] font-mono tabular-nums text-right">
-                        <span className="text-amber-600 font-extrabold mr-1">📌 {myEp}</span>
-                        <span className="text-slate-300 mx-0.5">/</span>
-                        <span className="text-slate-700 font-semibold ml-0.5">{work.episode}화</span>
+                      <div className="bg-white border border-slate-200 px-1.5 sm:px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold shadow-2xs flex items-center font-mono tabular-nums w-[110px] sm:w-[125px]">
+                        {/* 1열: 내가 본 회차 (우측 정렬) */}
+                        <span className="flex-1 text-right text-amber-600 font-extrabold truncate">
+                          📌{myEp}
+                        </span>
+                        {/* 2열: 슬래시 구분선 (고정 중앙) */}
+                        <span className="w-3 text-center text-slate-300 shrink-0">/</span>
+                        {/* 3열: 전체 회차 (우측 정렬) */}
+                        <span className="flex-1 text-right text-slate-700 font-semibold truncate">
+                          {work.episode}화
+                        </span>
                       </div>
                       
                       <button
