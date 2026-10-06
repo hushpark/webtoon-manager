@@ -629,7 +629,7 @@ export default function App() {
               </button>
             )}
 
-            {/* 🔍 연관 작품 자동완성 (완벽 수평 정렬 적용) */}
+            {/* 🔍 연관 작품 자동완성 (모바일 최적화 및 정렬) */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto">
                 <div className="p-2.5 text-xs font-extrabold text-slate-500 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
@@ -640,19 +640,18 @@ export default function App() {
                   <div
                     key={work.id}
                     onClick={() => handleSelectSuggestion(work)}
-                    className="p-3 hover:bg-indigo-50/90 cursor-pointer border-b border-slate-100 last:border-none flex items-center justify-between transition-colors gap-2"
+                    className="p-3 hover:bg-indigo-50/90 cursor-pointer border-b border-slate-100 last:border-none flex items-center justify-between transition-colors gap-1.5"
                   >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <Search className="w-4 h-4 text-slate-400 shrink-0" />
-                      <span className="font-bold text-sm text-slate-900 truncate">{work.title}</span>
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">{work.title}</span>
                     </div>
 
-                    {/* 📐 우측 정렬 박스 고정 */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <div className="w-32 text-center bg-amber-50 border border-amber-200 px-1.5 py-1 rounded text-xs font-bold text-amber-900">
+                    <div className="flex items-center gap-1 shrink-0">
+                      <div className="bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-[11px] font-bold text-amber-900 whitespace-nowrap">
                         📌 {work.my_episode || 0}화 <span className="text-amber-400 font-normal">/</span> {work.episode}화
                       </div>
-                      <span className="w-20 text-center text-[11px] bg-slate-100 text-slate-700 px-1 py-1 rounded font-bold border border-slate-200 truncate">
+                      <span className="w-16 text-center text-[10px] bg-slate-100 text-slate-700 px-1 py-0.5 rounded font-bold border border-slate-200 truncate whitespace-nowrap">
                         {formatStatusLabel(work.status)}
                       </span>
                     </div>
@@ -920,7 +919,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 완벽히 정렬된 작품 목록 표시 영역 */}
+          {/* 📋 모바일 완벽 한 줄 레이아웃 적용 영역 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-2 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -936,34 +935,34 @@ export default function App() {
                   <div 
                     key={work.id}
                     onClick={() => handleSelectSuggestion(work)}
-                    className="p-3 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2 shadow-2xs"
+                    className="p-2.5 sm:p-3 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-1.5 shadow-2xs"
                     title="클릭 시 선택 및 제목이 복사됩니다."
                   >
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       {work.has_fire_emoji && <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />}
-                      <span className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 truncate leading-snug">
+                      <span className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-indigo-600 truncate leading-snug">
                         {work.title}
                       </span>
                       <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
 
-                    {/* 📐 우측 회차/버튼/태그 완벽 수평 정렬 */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <div className="w-32 text-center bg-white border border-slate-200 px-2 py-1 rounded-lg text-xs font-bold shadow-2xs">
-                        <span className="text-amber-600 font-extrabold">📌 {myEp}화</span>
-                        <span className="text-slate-300 mx-1">|</span>
-                        <span className="text-slate-700 font-semibold">전체 {work.episode}화</span>
+                    {/* 📐 절대 줄바꿈 없는 회차/버튼/태그 한 줄 레이아웃 */}
+                    <div className="flex items-center gap-1 shrink-0 whitespace-nowrap">
+                      <div className="bg-white border border-slate-200 px-1.5 sm:px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold shadow-2xs flex items-center gap-1 whitespace-nowrap">
+                        <span className="text-amber-600 font-extrabold">📌{myEp}화</span>
+                        <span className="text-slate-300">/</span>
+                        <span className="text-slate-700 font-semibold">전체{work.episode}화</span>
                       </div>
                       
                       <button
                         onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
-                        className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-lg border border-amber-600 transition-all flex items-center gap-0.5 shadow-xs shrink-0 active:scale-95"
+                        className="px-1.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[11px] sm:text-xs font-black rounded-lg border border-amber-600 transition-all flex items-center gap-0.5 shadow-xs shrink-0 active:scale-95"
                         title="내가 본 회차 +1화 빠른 증가"
                       >
-                        <Plus className="w-3.5 h-3.5" />1
+                        <Plus className="w-3 h-3" />1
                       </button>
 
-                      <span className="w-16 text-center text-[11px] bg-slate-200/80 text-slate-700 px-1 py-1 rounded-lg font-bold truncate shrink-0 border border-slate-300/60">
+                      <span className="px-1.5 py-1 text-[10px] sm:text-[11px] bg-slate-200/80 text-slate-700 rounded-lg font-bold truncate shrink-0 border border-slate-300/60 max-w-[70px] text-center">
                         {formatStatusLabel(work.status)}
                       </span>
                     </div>
