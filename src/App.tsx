@@ -21,10 +21,12 @@ import {
   Trash2,
   Copy,
   GripHorizontal,
-  Move
+  Move,
+  Bookmark
 } from 'lucide-react';
 
 export interface Work extends BaseWork {
+  my_episode?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -62,6 +64,7 @@ export default function App() {
   const [selectedStatus, setSelectedStatus] = useState<WorkStatus | ''>('');
   const [selectedRawButton, setSelectedRawButton] = useState<string>('');
   const [episodeInput, setEpisodeInput] = useState<number | ''>('');
+  const [myEpisodeInput, setMyEpisodeInput] = useState<number | ''>(''); // 📌 내가 본 회차 상태 추가
   const [logs, setLogs] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading] = useState(false);
@@ -136,7 +139,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchState, selectedStatus, episodeInput, searchInput]);
+  }, [searchState, selectedStatus, episodeInput, myEpisodeInput, searchInput]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -214,6 +217,7 @@ export default function App() {
     setSelectedStatus('');
     setSelectedRawButton('');
     setEpisodeInput('');
+    setMyEpisodeInput('');
     setErrorMessage(null);
     if (searchInputRef.current) searchInputRef.current.focus();
   };
@@ -229,6 +233,7 @@ export default function App() {
       setSelectedStatus('');
       setSelectedRawButton('');
       setEpisodeInput('');
+      setMyEpisodeInput('');
       return;
     }
 
@@ -255,6 +260,7 @@ export default function App() {
       if (exact) {
         setSearchState({ type: 'EXACT_MATCH', work: exact });
         setEpisodeInput(exact.episode);
+        setMyEpisodeInput(exact.my_episode || 0);
         setSelectedStatus(exact.status as WorkStatus);
         setSelectedRawButton(exact.status);
       } else {
@@ -262,6 +268,7 @@ export default function App() {
         setSelectedStatus('');
         setSelectedRawButton('');
         setEpisodeInput('');
+        setMyEpisodeInput('');
       }
     }
   };
@@ -271,6 +278,7 @@ export default function App() {
     setShowSuggestions(false);
     setSearchState({ type: 'EXACT_MATCH', work });
     setEpisodeInput(work.episode);
+    setMyEpisodeInput(work.my_episode || 0);
     setSelectedStatus(work.status as WorkStatus);
     setSelectedRawButton(work.status);
     setLogs((prev) => Array.from(new Set([work.title, ...prev])).slice(0, 10));
@@ -300,6 +308,7 @@ export default function App() {
     if (exact) {
       setSearchState({ type: 'EXACT_MATCH', work: exact });
       setEpisodeInput(exact.episode);
+      setMyEpisodeInput(exact.my_episode || 0);
       setSelectedStatus(exact.status as WorkStatus);
       setSelectedRawButton(exact.status);
     } else {
@@ -336,7 +345,7 @@ export default function App() {
 
   const handleRegister = async () => {
     if (searchState.type !== 'NEW_WORK') {
-      setErrorMessage('⚠️ 미등록 신규 작품 상태일 때만 등록이 가능합니다.');
+      setErrorMessage('⚠️️ 미등록 신규 작품 상태일 때만 등록이 가능합니다.');
       return;
     }
     if (!selectedStatus) {
@@ -351,6 +360,7 @@ export default function App() {
       title,
       title_clean: cleanTitle(title),
       episode: Number(episodeInput) || 0,
+      my_episode: Number(myEpisodeInput) || 0, // 📌 신규 등록 시 내가 본 회차 저장
       status: selectedStatus,
       has_fire_emoji: hasFire
     });
@@ -378,7 +388,7 @@ export default function App() {
     const newTitle = searchInput.trim();
 
     if (!newTitle) {
-      setErrorMessage('⚠️ 작품 제목을 입력해 주세요.');
+      setErrorMessage('⚠️️ 작품 제목을 입력해 주세요.');
       return;
     }
 
@@ -389,12 +399,13 @@ export default function App() {
         title_clean: cleanTitle(newTitle),
         status: selectedStatus,
         episode: Number(episodeInput) || 0,
+        my_episode: Number(myEpisodeInput) || 0, // 📌 이동 / 수정 시 내가 본 회차 업데이트
         updated_at: new Date().toISOString()
       })
       .eq('id', currentWork.id);
 
     if (!error) {
-      alert(`✅ 이동 및 수정 완료: '${currentWork.title}' ➡️ '${newTitle}' (${selectedStatus})`);
+      alert(`✅ 이동 및 수정 완료: '${currentWork.title}' (${selectedStatus})`);
       handleReset();
       fetchAllWorks();
     } else {
@@ -426,14 +437,15 @@ export default function App() {
     }
   };
 
-  const handleQuickIncrementEpisode = async (work: Work, e: React.MouseEvent) => {
+  // 📌 내가 본 회차 +1 기능
+  const handleQuickIncrementMyEpisode = async (work: Work, e: React.MouseEvent) => {
     e.stopPropagation();
-    const nextEp = work.episode + 1;
+    const nextMyEp = (work.my_episode || 0) + 1;
     
     const { error } = await supabase
       .from('works')
       .update({ 
-        episode: nextEp, 
+        my_episode: nextMyEp, 
         has_fire_emoji: false,
         updated_at: new Date().toISOString() 
       })
@@ -442,7 +454,7 @@ export default function App() {
     if (!error) {
       fetchAllWorks();
       if (searchState.type === 'EXACT_MATCH' && searchState.work.id === work.id) {
-        setEpisodeInput(nextEp);
+        setMyEpisodeInput(nextMyEp);
       }
     }
   };
@@ -482,15 +494,6 @@ export default function App() {
   };
 
   const themeStyles = THEME_STYLES[currentTheme];
-
-  const getEpisodeBadgeColor = (ep: number | '') => {
-    const num = Number(ep);
-    if (!num) return 'bg-white text-slate-800 border-slate-300';
-    if (num >= 300) return 'bg-amber-100 text-amber-900 border-amber-300 font-bold';
-    if (num >= 200) return 'bg-rose-100 text-rose-900 border-rose-300 font-semibold';
-    if (num >= 100) return 'bg-emerald-100 text-emerald-950 border-emerald-300 font-semibold';
-    return 'bg-slate-50 text-slate-800 border-slate-300';
-  };
 
   const filteredAndSortedWorks = useMemo(() => {
     const now = new Date().getTime();
@@ -577,7 +580,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* 🎯 화면 중앙 정렬 보장 메인 컨테이너 */}
+      {/* 메인 컨테이너 */}
       <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1">
         
         {/* 1. 작품 검색 입력 */}
@@ -627,7 +630,7 @@ export default function App() {
                       <span className="font-bold text-sm text-slate-800 truncate">{work.title}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
-                      <span className="text-xs font-mono text-indigo-600 font-bold">{work.episode}화</span>
+                      <span className="text-xs font-mono text-slate-500">📌{work.my_episode || 0} / {work.episode}화</span>
                       <span className="w-20 text-center text-[10px] bg-slate-100 text-slate-600 px-1 py-0.5 rounded font-semibold truncate">
                         {formatStatusLabel(work.status)}
                       </span>
@@ -670,9 +673,9 @@ export default function App() {
                   </span>
                 </div>
                 <p className="text-[11px] text-blue-800 mt-1 flex items-center gap-1 flex-wrap">
-                  <span>제목/회차/분류를 변경하고</span>
+                  <span>제목/회차/관람회차 변경 후</span>
                   <kbd className="px-1.5 py-0.2 bg-blue-100 border border-blue-300 rounded text-[10px] font-mono font-bold text-blue-800">Alt+2</kbd>
-                  <span>를 누르면 내용 및 이름이 수정됩니다.</span>
+                  <span>를 누르면 저장됩니다.</span>
                 </p>
               </div>
             )}
@@ -694,17 +697,37 @@ export default function App() {
 
         {/* 2 & 3. 회차 및 분류 버튼 선택 */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors`}>
-          <div>
-            <label className="block text-xs font-bold text-slate-600 mb-1">회차 (Episode)</label>
-            <input
-              type="number"
-              inputMode="numeric"
-              className={`w-full p-3 border rounded-xl font-bold text-sm focus:outline-none transition-all ${getEpisodeBadgeColor(episodeInput)}`}
-              placeholder="숫자 입력"
-              value={episodeInput}
-              onFocus={(e) => e.target.select()}
-              onChange={(e) => setEpisodeInput(e.target.value ? Number(e.target.value) : '')}
-            />
+          
+          {/* 📌 최신 회차 & 내가 본 회차 입력 칸 분리 */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1">최신 회차 (전체)</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                className="w-full p-2.5 border border-slate-200 rounded-xl font-bold text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="최신화"
+                value={episodeInput}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setEpisodeInput(e.target.value ? Number(e.target.value) : '')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-amber-700 mb-1 flex items-center gap-1">
+                <Bookmark className="w-3.5 h-3.5 fill-amber-500 text-amber-600" />
+                <span>내가 본 회차 (북마크)</span>
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                className="w-full p-2.5 border border-amber-300 bg-amber-50/50 rounded-xl font-extrabold text-sm text-amber-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                placeholder="보던 위치"
+                value={myEpisodeInput}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setMyEpisodeInput(e.target.value ? Number(e.target.value) : '')}
+              />
+            </div>
           </div>
 
           <div>
@@ -894,7 +917,6 @@ export default function App() {
                   className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2"
                   title="클릭 시 선택 및 제목이 복사됩니다."
                 >
-                  {/* 🎯 모바일 겹침 방지: 제목 영역 flex-1 및 break-words */}
                   <div className="flex items-center gap-1.5 min-w-0 flex-1">
                     {work.has_fire_emoji && <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />}
                     <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-indigo-600 break-words leading-snug">
@@ -903,21 +925,26 @@ export default function App() {
                     <Copy className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                   </div>
 
-                  {/* 🎯 모바일 겹침 방지: 회차 및 상태 영역 고정 너비 및 shrink-0 whitespace-nowrap */}
+                  {/* 📌 내가 본 회차와 최신 회차 동시 표시 및 +1 버튼 연결 */}
                   <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
-                    <span className={`text-xs font-mono font-bold ${themeStyles.accentText} min-w-[42px] text-right`}>
-                      {work.episode}화
-                    </span>
+                    <div className="text-right leading-none">
+                      <span className="block text-xs font-mono font-extrabold text-amber-600">
+                        📌 {work.my_episode || 0}화
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        (전체 {work.episode}화)
+                      </span>
+                    </div>
                     
                     <button
-                      onClick={(e) => handleQuickIncrementEpisode(work, e)}
-                      className="px-1.5 py-0.5 bg-white hover:bg-slate-800 text-slate-700 hover:text-white text-[11px] font-bold rounded border border-slate-300 transition-all flex items-center gap-0.5 shadow-2xs shrink-0 active:scale-95"
-                      title="+1화 빠른 업데이트"
+                      onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
+                      className="px-1.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold rounded border border-amber-600 transition-all flex items-center gap-0.5 shadow-2xs shrink-0 active:scale-95"
+                      title="내가 본 회차 +1화 빠른 증가"
                     >
                       <Plus className="w-3 h-3" />1
                     </button>
 
-                    <span className="w-20 text-center text-[10px] bg-white border border-slate-200 text-slate-600 px-1 py-0.5 rounded font-semibold truncate shrink-0">
+                    <span className="w-18 text-center text-[10px] bg-white border border-slate-200 text-slate-600 px-1 py-0.5 rounded font-semibold truncate shrink-0">
                       {formatStatusLabel(work.status)}
                     </span>
                   </div>
