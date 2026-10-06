@@ -629,7 +629,7 @@ export default function App() {
               </button>
             )}
 
-            {/* 🔍 연관 작품 자동완성 (모바일 최적화 및 정렬) */}
+            {/* 🔍 연관 작품 자동완성 (회차 정렬 완전 고정) */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto">
                 <div className="p-2.5 text-xs font-extrabold text-slate-500 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
@@ -648,7 +648,7 @@ export default function App() {
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
-                      <div className="bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded text-[11px] font-bold text-amber-900 whitespace-nowrap">
+                      <div className="bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[11px] font-bold text-amber-900 whitespace-nowrap font-mono tabular-nums text-right min-w-[110px]">
                         📌 {work.my_episode || 0}화 <span className="text-amber-400 font-normal">/</span> {work.episode}화
                       </div>
                       <span className="w-16 text-center text-[10px] bg-slate-100 text-slate-700 px-1 py-0.5 rounded font-bold border border-slate-200 truncate whitespace-nowrap">
@@ -919,7 +919,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 모바일 완벽 한 줄 레이아웃 적용 영역 */}
+          {/* 📋 회차 수 자릿수 변동에도 절대 안 흔들리는 목록 영역 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-2 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -946,12 +946,12 @@ export default function App() {
                       <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
 
-                    {/* 📐 절대 줄바꿈 없는 회차/버튼/태그 한 줄 레이아웃 */}
+                    {/* 📐 자릿수가 늘어나도 정렬이 칼같이 유지되는 영역 */}
                     <div className="flex items-center gap-1 shrink-0 whitespace-nowrap">
-                      <div className="bg-white border border-slate-200 px-1.5 sm:px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold shadow-2xs flex items-center gap-1 whitespace-nowrap">
-                        <span className="text-amber-600 font-extrabold">📌{myEp}화</span>
-                        <span className="text-slate-300">/</span>
-                        <span className="text-slate-700 font-semibold">전체{work.episode}화</span>
+                      <div className="bg-white border border-slate-200 px-1.5 sm:px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold shadow-2xs flex items-center justify-between min-w-[105px] sm:min-w-[120px] font-mono tabular-nums">
+                        <span className="text-amber-600 font-extrabold text-right flex-1">📌{myEp}</span>
+                        <span className="text-slate-300 mx-0.5">/</span>
+                        <span className="text-slate-700 font-semibold text-left flex-1">{work.episode}화</span>
                       </div>
                       
                       <button
@@ -962,7 +962,7 @@ export default function App() {
                         <Plus className="w-3 h-3" />1
                       </button>
 
-                      <span className="px-1.5 py-1 text-[10px] sm:text-[11px] bg-slate-200/80 text-slate-700 rounded-lg font-bold truncate shrink-0 border border-slate-300/60 max-w-[70px] text-center">
+                      <span className="px-1 py-1 text-[10px] sm:text-[11px] bg-slate-200/80 text-slate-700 rounded-lg font-bold truncate shrink-0 border border-slate-300/60 w-[62px] text-center">
                         {formatStatusLabel(work.status)}
                       </span>
                     </div>
