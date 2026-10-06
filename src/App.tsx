@@ -64,7 +64,7 @@ export default function App() {
   const [selectedStatus, setSelectedStatus] = useState<WorkStatus | ''>('');
   const [selectedRawButton, setSelectedRawButton] = useState<string>('');
   const [episodeInput, setEpisodeInput] = useState<number | ''>('');
-  const [myEpisodeInput, setMyEpisodeInput] = useState<number | ''>(''); // 📌 내가 본 회차 상태 추가
+  const [myEpisodeInput, setMyEpisodeInput] = useState<number | ''>('');
   const [logs, setLogs] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading] = useState(false);
@@ -260,7 +260,7 @@ export default function App() {
       if (exact) {
         setSearchState({ type: 'EXACT_MATCH', work: exact });
         setEpisodeInput(exact.episode);
-        setMyEpisodeInput(exact.my_episode || 0);
+        setMyEpisodeInput(exact.my_episode || exact.episode); // 📌 기본값으로 최신 회차 자동 적용
         setSelectedStatus(exact.status as WorkStatus);
         setSelectedRawButton(exact.status);
       } else {
@@ -278,7 +278,8 @@ export default function App() {
     setShowSuggestions(false);
     setSearchState({ type: 'EXACT_MATCH', work });
     setEpisodeInput(work.episode);
-    setMyEpisodeInput(work.my_episode || 0);
+    // 📌 내가 본 회차가 0이면 최신 회차로 보여줌
+    setMyEpisodeInput(work.my_episode ? work.my_episode : work.episode);
     setSelectedStatus(work.status as WorkStatus);
     setSelectedRawButton(work.status);
     setLogs((prev) => Array.from(new Set([work.title, ...prev])).slice(0, 10));
@@ -308,7 +309,7 @@ export default function App() {
     if (exact) {
       setSearchState({ type: 'EXACT_MATCH', work: exact });
       setEpisodeInput(exact.episode);
-      setMyEpisodeInput(exact.my_episode || 0);
+      setMyEpisodeInput(exact.my_episode || exact.episode);
       setSelectedStatus(exact.status as WorkStatus);
       setSelectedRawButton(exact.status);
     } else {
@@ -316,10 +317,16 @@ export default function App() {
     }
   };
 
+  // 🎯 [본거] 버튼 클릭 시 회차 자동 동기화 로직
   const handleSelectUpdateStatus = (btn: UpdateButtonType) => {
     setSelectedRawButton(btn);
 
     if (btn === '본거') {
+      // 📌 본거 클릭 시 최신 회차 값을 [내가 본 회차]로 자동 대입
+      if (episodeInput !== '') {
+        setMyEpisodeInput(episodeInput);
+      }
+
       if (searchState.type === 'EXACT_MATCH') {
         const currentStatus = searchState.work.status;
 
@@ -345,7 +352,7 @@ export default function App() {
 
   const handleRegister = async () => {
     if (searchState.type !== 'NEW_WORK') {
-      setErrorMessage('⚠️️ 미등록 신규 작품 상태일 때만 등록이 가능합니다.');
+      setErrorMessage('⚠️ 미등록 신규 작품 상태일 때만 등록이 가능합니다.');
       return;
     }
     if (!selectedStatus) {
@@ -355,12 +362,19 @@ export default function App() {
 
     const title = searchInput.trim();
     const hasFire = ['완결', '시즌 완결', '연재중', '휴재', '100회 미만'].includes(selectedStatus);
+    const totalEp = Number(episodeInput) || 0;
+    
+    // 📌 본거 상태면 내가 본 회차를 최신 회차와 똑같이 저장
+    const isBought = selectedStatus.startsWith('본거_');
+    const myEp = isBought 
+      ? totalEp 
+      : (myEpisodeInput !== '' ? Number(myEpisodeInput) : totalEp);
 
     const { error } = await supabase.from('works').insert({
       title,
       title_clean: cleanTitle(title),
-      episode: Number(episodeInput) || 0,
-      my_episode: Number(myEpisodeInput) || 0, // 📌 신규 등록 시 내가 본 회차 저장
+      episode: totalEp,
+      my_episode: myEp,
       status: selectedStatus,
       has_fire_emoji: hasFire
     });
@@ -388,9 +402,17 @@ export default function App() {
     const newTitle = searchInput.trim();
 
     if (!newTitle) {
-      setErrorMessage('⚠️️ 작품 제목을 입력해 주세요.');
+      setErrorMessage('⚠️ 작품 제목을 입력해 주세요.');
       return;
     }
+
+    const totalEp = Number(episodeInput) || 0;
+    
+    // 📌 이동하는 상태가 '본거' 계열이면 내가 본 회차를 최신 회차로 자동 동기화
+    const isBought = selectedStatus.startsWith('본거_');
+    const myEp = isBought 
+      ? totalEp 
+      : (myEpisodeInput !== '' ? Number(myEpisodeInput) : totalEp);
 
     const { error } = await supabase
       .from('works')
@@ -398,8 +420,8 @@ export default function App() {
         title: newTitle,
         title_clean: cleanTitle(newTitle),
         status: selectedStatus,
-        episode: Number(episodeInput) || 0,
-        my_episode: Number(myEpisodeInput) || 0, // 📌 이동 / 수정 시 내가 본 회차 업데이트
+        episode: totalEp,
+        my_episode: myEp,
         updated_at: new Date().toISOString()
       })
       .eq('id', currentWork.id);
@@ -437,10 +459,10 @@ export default function App() {
     }
   };
 
-  // 📌 내가 본 회차 +1 기능
   const handleQuickIncrementMyEpisode = async (work: Work, e: React.MouseEvent) => {
     e.stopPropagation();
-    const nextMyEp = (work.my_episode || 0) + 1;
+    const currentMyEp = work.my_episode ? work.my_episode : work.episode;
+    const nextMyEp = currentMyEp + 1;
     
     const { error } = await supabase
       .from('works')
@@ -630,7 +652,7 @@ export default function App() {
                       <span className="font-bold text-sm text-slate-800 truncate">{work.title}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
-                      <span className="text-xs font-mono text-slate-500">📌{work.my_episode || 0} / {work.episode}화</span>
+                      <span className="text-xs font-mono text-slate-500">📌{work.my_episode || work.episode} / {work.episode}화</span>
                       <span className="w-20 text-center text-[10px] bg-slate-100 text-slate-600 px-1 py-0.5 rounded font-semibold truncate">
                         {formatStatusLabel(work.status)}
                       </span>
@@ -698,7 +720,6 @@ export default function App() {
         {/* 2 & 3. 회차 및 분류 버튼 선택 */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors`}>
           
-          {/* 📌 최신 회차 & 내가 본 회차 입력 칸 분리 */}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1">최신 회차 (전체)</label>
@@ -910,46 +931,48 @@ export default function App() {
                 해당 분류의 작품이 없습니다.
               </div>
             ) : (
-              filteredAndSortedWorks.map((work) => (
-                <div 
-                  key={work.id}
-                  onClick={() => handleSelectSuggestion(work)}
-                  className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2"
-                  title="클릭 시 선택 및 제목이 복사됩니다."
-                >
-                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                    {work.has_fire_emoji && <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />}
-                    <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-indigo-600 break-words leading-snug">
-                      {work.title}
-                    </span>
-                    <Copy className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                  </div>
-
-                  {/* 📌 내가 본 회차와 최신 회차 동시 표시 및 +1 버튼 연결 */}
-                  <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
-                    <div className="text-right leading-none">
-                      <span className="block text-xs font-mono font-extrabold text-amber-600">
-                        📌 {work.my_episode || 0}화
+              filteredAndSortedWorks.map((work) => {
+                const myEp = work.my_episode ? work.my_episode : work.episode;
+                return (
+                  <div 
+                    key={work.id}
+                    onClick={() => handleSelectSuggestion(work)}
+                    className="p-3 bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2"
+                    title="클릭 시 선택 및 제목이 복사됩니다."
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      {work.has_fire_emoji && <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />}
+                      <span className="font-bold text-xs sm:text-sm text-slate-800 group-hover:text-indigo-600 break-words leading-snug">
+                        {work.title}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        (전체 {work.episode}화)
+                      <Copy className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+                      <div className="text-right leading-none">
+                        <span className="block text-xs font-mono font-extrabold text-amber-600">
+                          📌 {myEp}화
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          (전체 {work.episode}화)
+                        </span>
+                      </div>
+                      
+                      <button
+                        onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
+                        className="px-1.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold rounded border border-amber-600 transition-all flex items-center gap-0.5 shadow-2xs shrink-0 active:scale-95"
+                        title="내가 본 회차 +1화 빠른 증가"
+                      >
+                        <Plus className="w-3 h-3" />1
+                      </button>
+
+                      <span className="w-18 text-center text-[10px] bg-white border border-slate-200 text-slate-600 px-1 py-0.5 rounded font-semibold truncate shrink-0">
+                        {formatStatusLabel(work.status)}
                       </span>
                     </div>
-                    
-                    <button
-                      onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
-                      className="px-1.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold rounded border border-amber-600 transition-all flex items-center gap-0.5 shadow-2xs shrink-0 active:scale-95"
-                      title="내가 본 회차 +1화 빠른 증가"
-                    >
-                      <Plus className="w-3 h-3" />1
-                    </button>
-
-                    <span className="w-18 text-center text-[10px] bg-white border border-slate-200 text-slate-600 px-1 py-0.5 rounded font-semibold truncate shrink-0">
-                      {formatStatusLabel(work.status)}
-                    </span>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
