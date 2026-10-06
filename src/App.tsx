@@ -260,7 +260,7 @@ export default function App() {
       if (exact) {
         setSearchState({ type: 'EXACT_MATCH', work: exact });
         setEpisodeInput(exact.episode);
-        setMyEpisodeInput(exact.my_episode || exact.episode); // 📌 기본값으로 최신 회차 자동 적용
+        setMyEpisodeInput(exact.my_episode || 0);
         setSelectedStatus(exact.status as WorkStatus);
         setSelectedRawButton(exact.status);
       } else {
@@ -278,8 +278,7 @@ export default function App() {
     setShowSuggestions(false);
     setSearchState({ type: 'EXACT_MATCH', work });
     setEpisodeInput(work.episode);
-    // 📌 내가 본 회차가 0이면 최신 회차로 보여줌
-    setMyEpisodeInput(work.my_episode ? work.my_episode : work.episode);
+    setMyEpisodeInput(work.my_episode || 0);
     setSelectedStatus(work.status as WorkStatus);
     setSelectedRawButton(work.status);
     setLogs((prev) => Array.from(new Set([work.title, ...prev])).slice(0, 10));
@@ -309,7 +308,7 @@ export default function App() {
     if (exact) {
       setSearchState({ type: 'EXACT_MATCH', work: exact });
       setEpisodeInput(exact.episode);
-      setMyEpisodeInput(exact.my_episode || exact.episode);
+      setMyEpisodeInput(exact.my_episode || 0);
       setSelectedStatus(exact.status as WorkStatus);
       setSelectedRawButton(exact.status);
     } else {
@@ -317,12 +316,10 @@ export default function App() {
     }
   };
 
-  // 🎯 [본거] 버튼 클릭 시 회차 자동 동기화 로직
   const handleSelectUpdateStatus = (btn: UpdateButtonType) => {
     setSelectedRawButton(btn);
 
     if (btn === '본거') {
-      // 📌 본거 클릭 시 최신 회차 값을 [내가 본 회차]로 자동 대입
       if (episodeInput !== '') {
         setMyEpisodeInput(episodeInput);
       }
@@ -356,7 +353,7 @@ export default function App() {
       return;
     }
     if (!selectedStatus) {
-      setErrorMessage('⚠️ 분류 상태를 선택해 주세요.');
+      setErrorMessage('⚠️️ 분류 상태를 선택해 주세요.');
       return;
     }
 
@@ -364,11 +361,10 @@ export default function App() {
     const hasFire = ['완결', '시즌 완결', '연재중', '휴재', '100회 미만'].includes(selectedStatus);
     const totalEp = Number(episodeInput) || 0;
     
-    // 📌 본거 상태면 내가 본 회차를 최신 회차와 똑같이 저장
     const isBought = selectedStatus.startsWith('본거_');
     const myEp = isBought 
       ? totalEp 
-      : (myEpisodeInput !== '' ? Number(myEpisodeInput) : totalEp);
+      : Number(myEpisodeInput) || 0;
 
     const { error } = await supabase.from('works').insert({
       title,
@@ -408,11 +404,10 @@ export default function App() {
 
     const totalEp = Number(episodeInput) || 0;
     
-    // 📌 이동하는 상태가 '본거' 계열이면 내가 본 회차를 최신 회차로 자동 동기화
     const isBought = selectedStatus.startsWith('본거_');
     const myEp = isBought 
       ? totalEp 
-      : (myEpisodeInput !== '' ? Number(myEpisodeInput) : totalEp);
+      : Number(myEpisodeInput) || 0;
 
     const { error } = await supabase
       .from('works')
@@ -450,7 +445,7 @@ export default function App() {
         .eq('id', currentWork.id);
 
       if (!error) {
-        alert(`🗑️ '${currentWork.title}' 작품이 완전히 삭제되었습니다.`);
+        alert(`🗑️️ '${currentWork.title}' 작품이 완전히 삭제되었습니다.`);
         handleReset();
         fetchAllWorks();
       } else {
@@ -461,8 +456,7 @@ export default function App() {
 
   const handleQuickIncrementMyEpisode = async (work: Work, e: React.MouseEvent) => {
     e.stopPropagation();
-    const currentMyEp = work.my_episode ? work.my_episode : work.episode;
-    const nextMyEp = currentMyEp + 1;
+    const nextMyEp = (work.my_episode || 0) + 1;
     
     const { error } = await supabase
       .from('works')
@@ -652,7 +646,7 @@ export default function App() {
                       <span className="font-bold text-sm text-slate-800 truncate">{work.title}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
-                      <span className="text-xs font-mono text-slate-500">📌{work.my_episode || work.episode} / {work.episode}화</span>
+                      <span className="text-xs font-mono text-slate-500">📌{work.my_episode || 0} / {work.episode}화</span>
                       <span className="w-20 text-center text-[10px] bg-slate-100 text-slate-600 px-1 py-0.5 rounded font-semibold truncate">
                         {formatStatusLabel(work.status)}
                       </span>
@@ -932,7 +926,7 @@ export default function App() {
               </div>
             ) : (
               filteredAndSortedWorks.map((work) => {
-                const myEp = work.my_episode ? work.my_episode : work.episode;
+                const myEp = work.my_episode || 0;
                 return (
                   <div 
                     key={work.id}
