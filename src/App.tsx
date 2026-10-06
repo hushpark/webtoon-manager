@@ -260,7 +260,7 @@ export default function App() {
       if (exact) {
         setSearchState({ type: 'EXACT_MATCH', work: exact });
         setEpisodeInput(exact.episode);
-        setMyEpisodeInput(exact.my_episode || 0);
+        setMyEpisodeInput(exact.my_episode !== undefined ? exact.my_episode : 0);
         setSelectedStatus(exact.status as WorkStatus);
         setSelectedRawButton(exact.status);
       } else {
@@ -278,7 +278,7 @@ export default function App() {
     setShowSuggestions(false);
     setSearchState({ type: 'EXACT_MATCH', work });
     setEpisodeInput(work.episode);
-    setMyEpisodeInput(work.my_episode || 0);
+    setMyEpisodeInput(work.my_episode !== undefined ? work.my_episode : 0);
     setSelectedStatus(work.status as WorkStatus);
     setSelectedRawButton(work.status);
     setLogs((prev) => Array.from(new Set([work.title, ...prev])).slice(0, 10));
@@ -308,7 +308,7 @@ export default function App() {
     if (exact) {
       setSearchState({ type: 'EXACT_MATCH', work: exact });
       setEpisodeInput(exact.episode);
-      setMyEpisodeInput(exact.my_episode || 0);
+      setMyEpisodeInput(exact.my_episode !== undefined ? exact.my_episode : 0);
       setSelectedStatus(exact.status as WorkStatus);
       setSelectedRawButton(exact.status);
     } else {
@@ -340,7 +340,7 @@ export default function App() {
           setSelectedStatus('본거_완결' as WorkStatus);
         }
       } else {
-        setErrorMessage('⚠️️ 작품을 선택한 상태에서만 [본거] 지정이 가능합니다.');
+        setErrorMessage('⚠️ 작품을 선택한 상태에서만 [본거] 지정이 가능합니다.');
       }
     } else {
       setSelectedStatus(btn as WorkStatus);
@@ -362,9 +362,9 @@ export default function App() {
     const totalEp = Number(episodeInput) || 0;
     
     const isBought = selectedStatus.startsWith('본거_');
-    const myEp = isBought 
-      ? totalEp 
-      : Number(myEpisodeInput) || 0;
+    const myEp = myEpisodeInput !== '' 
+      ? Number(myEpisodeInput) 
+      : (isBought ? totalEp : 0);
 
     const { error } = await supabase.from('works').insert({
       title,
@@ -405,9 +405,9 @@ export default function App() {
     const totalEp = Number(episodeInput) || 0;
     
     const isBought = selectedStatus.startsWith('본거_');
-    const myEp = isBought 
-      ? totalEp 
-      : Number(myEpisodeInput) || 0;
+    const myEp = myEpisodeInput !== '' 
+      ? Number(myEpisodeInput) 
+      : (isBought ? totalEp : (currentWork.my_episode || 0));
 
     const { error } = await supabase
       .from('works')
@@ -629,7 +629,7 @@ export default function App() {
               </button>
             )}
 
-            {/* 🔍 연관 작품 자동완성 (3단 분할 레이아웃 적용) */}
+            {/* 🔍 연관 작품 자동완성 */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto">
                 <div className="p-2.5 text-xs font-extrabold text-slate-500 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
@@ -648,7 +648,6 @@ export default function App() {
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
-                      {/* 📐 3단 고정 컬럼 회차 박스 */}
                       <div className="bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[11px] font-bold text-amber-900 font-mono tabular-nums flex items-center w-[115px]">
                         <span className="w-12 text-right text-amber-600 font-extrabold">📌{work.my_episode || 0}</span>
                         <span className="w-3 text-center text-amber-400 font-normal">/</span>
@@ -723,6 +722,7 @@ export default function App() {
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors`}>
           
           <div className="grid grid-cols-2 gap-2.5">
+            {/* 🎯 클릭 시 자동 전체 블록 선택 처리된 입력 필드 */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">최신 회차 (전체)</label>
               <input
@@ -732,7 +732,7 @@ export default function App() {
                 placeholder="최신화"
                 value={episodeInput}
                 onFocus={(e) => e.target.select()}
-                onChange={(e) => setEpisodeInput(e.target.value ? Number(e.target.value) : '')}
+                onChange={(e) => setEpisodeInput(e.target.value === '' ? '' : Number(e.target.value))}
               />
             </div>
 
@@ -748,7 +748,7 @@ export default function App() {
                 placeholder="보던 위치"
                 value={myEpisodeInput}
                 onFocus={(e) => e.target.select()}
-                onChange={(e) => setMyEpisodeInput(e.target.value ? Number(e.target.value) : '')}
+                onChange={(e) => setMyEpisodeInput(e.target.value === '' ? '' : Number(e.target.value))}
               />
             </div>
           </div>
@@ -923,7 +923,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 칼 정렬 3단 분할 레이아웃 적용 목록 영역 */}
+          {/* 📋 목록 영역 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-2 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -950,16 +950,13 @@ export default function App() {
                       <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
 
-                    {/* 📐 3단 고정 컬럼 회차 박스 (슬래시 위치 완벽 정렬) */}
+                    {/* 📐 3단 고정 컬럼 회차 박스 */}
                     <div className="flex items-center gap-1 shrink-0 whitespace-nowrap">
                       <div className="bg-white border border-slate-200 px-1.5 sm:px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold shadow-2xs flex items-center font-mono tabular-nums w-[110px] sm:w-[125px]">
-                        {/* 1열: 내가 본 회차 (우측 정렬) */}
                         <span className="flex-1 text-right text-amber-600 font-extrabold truncate">
                           📌{myEp}
                         </span>
-                        {/* 2열: 슬래시 구분선 (고정 중앙) */}
                         <span className="w-3 text-center text-slate-300 shrink-0">/</span>
-                        {/* 3열: 전체 회차 (우측 정렬) */}
                         <span className="flex-1 text-right text-slate-700 font-semibold truncate">
                           {work.episode}화
                         </span>
