@@ -629,7 +629,7 @@ export default function App() {
               </button>
             )}
 
-            {/* 🔍 연관 작품 자동완성 (가독성 향상) */}
+            {/* 🔍 연관 작품 자동완성 (완벽 수평 정렬 적용) */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto">
                 <div className="p-2.5 text-xs font-extrabold text-slate-500 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
@@ -640,17 +640,19 @@ export default function App() {
                   <div
                     key={work.id}
                     onClick={() => handleSelectSuggestion(work)}
-                    className="p-3.5 hover:bg-indigo-50/90 cursor-pointer border-b border-slate-100 last:border-none flex items-center justify-between transition-colors gap-2"
+                    className="p-3 hover:bg-indigo-50/90 cursor-pointer border-b border-slate-100 last:border-none flex items-center justify-between transition-colors gap-2"
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <Search className="w-4 h-4 text-slate-400 shrink-0" />
                       <span className="font-bold text-sm text-slate-900 truncate">{work.title}</span>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
-                      <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                        📌 {work.my_episode || 0}화 <span className="text-slate-400 font-normal">/</span> {work.episode}화
-                      </span>
-                      <span className="text-[11px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-bold border border-slate-200">
+
+                    {/* 📐 우측 정렬 박스 고정 */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="w-32 text-center bg-amber-50 border border-amber-200 px-1.5 py-1 rounded text-xs font-bold text-amber-900">
+                        📌 {work.my_episode || 0}화 <span className="text-amber-400 font-normal">/</span> {work.episode}화
+                      </div>
+                      <span className="w-20 text-center text-[11px] bg-slate-100 text-slate-700 px-1 py-1 rounded font-bold border border-slate-200 truncate">
                         {formatStatusLabel(work.status)}
                       </span>
                     </div>
@@ -918,7 +920,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 선명해진 작품 목록 표시 영역 */}
+          {/* 📋 완벽히 정렬된 작품 목록 표시 영역 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-2 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -934,22 +936,22 @@ export default function App() {
                   <div 
                     key={work.id}
                     onClick={() => handleSelectSuggestion(work)}
-                    className="p-3.5 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2 shadow-2xs"
+                    className="p-3 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2 shadow-2xs"
                     title="클릭 시 선택 및 제목이 복사됩니다."
                   >
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       {work.has_fire_emoji && <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />}
-                      <span className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 break-words leading-snug">
+                      <span className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 truncate leading-snug">
                         {work.title}
                       </span>
                       <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
 
-                    {/* 📌 회차 정보 선명도 최대로 개선 */}
-                    <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5 bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-xs font-bold shadow-2xs">
+                    {/* 📐 우측 회차/버튼/태그 완벽 수평 정렬 */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="w-32 text-center bg-white border border-slate-200 px-2 py-1 rounded-lg text-xs font-bold shadow-2xs">
                         <span className="text-amber-600 font-extrabold">📌 {myEp}화</span>
-                        <span className="text-slate-300">|</span>
+                        <span className="text-slate-300 mx-1">|</span>
                         <span className="text-slate-700 font-semibold">전체 {work.episode}화</span>
                       </div>
                       
@@ -961,7 +963,7 @@ export default function App() {
                         <Plus className="w-3.5 h-3.5" />1
                       </button>
 
-                      <span className="w-16 text-center text-[11px] bg-slate-200/80 text-slate-700 px-1.5 py-1 rounded-lg font-bold truncate shrink-0 border border-slate-300/60">
+                      <span className="w-16 text-center text-[11px] bg-slate-200/80 text-slate-700 px-1 py-1 rounded-lg font-bold truncate shrink-0 border border-slate-300/60">
                         {formatStatusLabel(work.status)}
                       </span>
                     </div>
