@@ -79,11 +79,17 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('NEW');
   const [sortOption, setSortOption] = useState<SortOption>('title_asc');
 
-  // 목록 영역 높이 조절
-  const [listHeight, setListHeight] = useState(360);
+  // 모바일/PC 반응형 초기 높이 설정 (모바일 스크린에서는 기본 520px)
+  const [listHeight, setListHeight] = useState(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      return 520;
+    }
+    return 420;
+  });
+
   const isResizingRef = useRef(false);
   const startYRef = useRef(0);
-  const startHeightRef = useRef(360);
+  const startHeightRef = useRef(420);
 
   // 위치 이동(Floating Drag) 관련 상태
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
@@ -123,7 +129,7 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 키보드 단축키 이벤트 (Alt+1, Alt+2, Esc 전용)
+  // 키보드 단축키 이벤트
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -140,22 +146,32 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchState, selectedStatus, episodeInput, myEpisodeInput, searchInput]);
 
+  // 마우스 및 터치 포인터 이동 통합 이벤트 처리
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMove = (clientY: number, clientX: number) => {
       if (isResizingRef.current) {
-        const deltaY = e.clientY - startYRef.current;
-        const newHeight = Math.max(160, Math.min(800, startHeightRef.current + deltaY));
+        const deltaY = clientY - startYRef.current;
+        const newHeight = Math.max(160, Math.min(850, startHeightRef.current + deltaY));
         setListHeight(newHeight);
-      }
-      else if (isDraggingBoxRef.current) {
+      } else if (isDraggingBoxRef.current) {
         setPosition({
-          x: e.clientX - dragOffsetRef.current.x,
-          y: e.clientY - dragOffsetRef.current.y
+          x: clientX - dragOffsetRef.current.x,
+          y: clientY - dragOffsetRef.current.y
         });
       }
     };
 
-    const handleMouseUp = () => {
+    const handleMouseMove = (e: MouseEvent) => {
+      handleMove(e.clientY, e.clientX);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0 && (isResizingRef.current || isDraggingBoxRef.current)) {
+        handleMove(e.touches[0].clientY, e.touches[0].clientX);
+      }
+    };
+
+    const handleEnd = () => {
       isResizingRef.current = false;
       isDraggingBoxRef.current = false;
       document.body.style.cursor = 'default';
@@ -163,22 +179,28 @@ export default function App() {
     };
 
     window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleEnd);
+
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleEnd);
     };
   }, []);
 
-  const startDraggingBox = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).tagName === 'SELECT') return;
+  // 박스 위치 이동 시작 (마우스/터치 지원)
+  const startDraggingBox = (clientX: number, clientY: number, target: HTMLElement) => {
+    if (target.tagName === 'SELECT') return;
     isDraggingBoxRef.current = true;
     
     if (cardBoxRef.current) {
       const rect = cardBoxRef.current.getBoundingClientRect();
       dragOffsetRef.current = {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
+        x: clientX - rect.left,
+        y: clientY - rect.top
       };
       if (!position) {
         setPosition({ x: rect.left, y: rect.top });
@@ -188,9 +210,10 @@ export default function App() {
     document.body.style.userSelect = 'none';
   };
 
-  const startResizing = (e: React.MouseEvent) => {
+  // 목록 높이 조절 시작 (마우스/터치 지원)
+  const startResizing = (clientY: number) => {
     isResizingRef.current = true;
-    startYRef.current = e.clientY;
+    startYRef.current = clientY;
     startHeightRef.current = listHeight;
     document.body.style.cursor = 'row-resize';
     document.body.style.userSelect = 'none';
@@ -465,17 +488,17 @@ export default function App() {
     }
   };
 
-  const handleTabMouseDown = (e: React.MouseEvent) => {
+  const handleTabStart = (pageX: number) => {
     if (!tabsRef.current) return;
     isDraggingTabRef.current = true;
     hasMovedRef.current = false;
-    startXRef.current = e.pageX - tabsRef.current.offsetLeft;
+    startXRef.current = pageX - tabsRef.current.offsetLeft;
     scrollLeftRef.current = tabsRef.current.scrollLeft;
   };
 
-  const handleTabMouseMove = (e: React.MouseEvent) => {
+  const handleTabMove = (pageX: number) => {
     if (!isDraggingTabRef.current || !tabsRef.current) return;
-    const x = e.pageX - tabsRef.current.offsetLeft;
+    const x = pageX - tabsRef.current.offsetLeft;
     const walk = (x - startXRef.current) * 1.5;
     if (Math.abs(walk) > 4) {
       hasMovedRef.current = true;
@@ -483,7 +506,7 @@ export default function App() {
     tabsRef.current.scrollLeft = scrollLeftRef.current - walk;
   };
 
-  const handleTabMouseUpOrLeave = () => {
+  const handleTabEnd = () => {
     isDraggingTabRef.current = false;
   };
 
@@ -865,7 +888,7 @@ export default function App() {
           </section>
         )}
 
-        {/* 📚 마우스 드래그 이동 가능한 전체 작품 목록 카드 */}
+        {/* 📚 모바일/PC 드래그 이동 및 크기 조절 가능한 작품 목록 상자 */}
         <section 
           ref={cardBoxRef}
           style={position ? {
@@ -878,11 +901,16 @@ export default function App() {
           } : {}}
           className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-xl space-y-3 transition-colors`}
         >
-          {/* 상단 드래그 헤더 */}
+          {/* 상단 드래그 헤더 (터치/마우스 이동 대응) */}
           <div 
-            onMouseDown={startDraggingBox}
-            className="flex items-center justify-between text-xs font-bold text-slate-700 cursor-move select-none p-1.5 -m-1.5 rounded-t-xl hover:bg-slate-50 transition-colors group"
-            title="마우스로 상단을 잡고 끌면 원하는 위치로 이동합니다."
+            onMouseDown={(e) => startDraggingBox(e.clientX, e.clientY, e.target as HTMLElement)}
+            onTouchStart={(e) => {
+              if (e.touches.length > 0) {
+                startDraggingBox(e.touches[0].clientX, e.touches[0].clientY, e.target as HTMLElement);
+              }
+            }}
+            className="flex items-center justify-between text-xs font-bold text-slate-700 cursor-move select-none p-1.5 -m-1.5 rounded-t-xl hover:bg-slate-50 transition-colors group touch-none"
+            title="손가락/마우스로 잡고 끌면 원하는 위치로 이동합니다."
           >
             <span className="flex items-center gap-2">
               <Move className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
@@ -916,13 +944,16 @@ export default function App() {
             </div>
           </div>
 
-          {/* 탭 영역 */}
+          {/* 탭 영역 (터치 가로 스크롤 지원) */}
           <div 
             ref={tabsRef}
-            onMouseDown={handleTabMouseDown}
-            onMouseMove={handleTabMouseMove}
-            onMouseUp={handleTabMouseUpOrLeave}
-            onMouseLeave={handleTabMouseUpOrLeave}
+            onMouseDown={(e) => handleTabStart(e.pageX)}
+            onMouseMove={(e) => handleTabMove(e.pageX)}
+            onMouseUp={handleTabEnd}
+            onMouseLeave={handleTabEnd}
+            onTouchStart={(e) => e.touches.length > 0 && handleTabStart(e.touches[0].pageX)}
+            onTouchMove={(e) => e.touches.length > 0 && handleTabMove(e.touches[0].pageX)}
+            onTouchEnd={handleTabEnd}
             onWheel={handleTabWheel}
             className="flex gap-1.5 overflow-x-auto pb-2.5 bg-slate-100 p-1.5 rounded-xl text-xs font-bold cursor-grab active:cursor-grabbing select-none"
           >
@@ -974,7 +1005,6 @@ export default function App() {
                       <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
 
-                    {/* 📐 3단 고정 컬럼 + 비교 색상 반영 회차 박스 */}
                     <div className="flex items-center gap-1 shrink-0 whitespace-nowrap">
                       <div className={`border px-1.5 sm:px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold shadow-2xs flex items-center font-mono tabular-nums w-[110px] sm:w-[125px] ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                         <span className={`flex-1 text-right font-extrabold truncate ${isError ? 'text-rose-700' : 'text-amber-600'}`}>
@@ -1004,13 +1034,18 @@ export default function App() {
             )}
           </div>
 
-          {/* 높이 조절 손잡이 */}
+          {/* 높이 조절 손잡이 (터치 드래그 연동) */}
           <div
-            onMouseDown={startResizing}
-            className="w-full pt-1 pb-0.5 cursor-row-resize flex flex-col items-center justify-center hover:bg-slate-100/80 rounded-b-xl border-t border-slate-100 transition-colors group"
-            title="위아래로 드래그하면 보이는 목록 높이를 조절할 수 있습니다."
+            onMouseDown={(e) => startResizing(e.clientY)}
+            onTouchStart={(e) => {
+              if (e.touches.length > 0) {
+                startResizing(e.touches[0].clientY);
+              }
+            }}
+            className="w-full pt-1.5 pb-1 cursor-row-resize flex flex-col items-center justify-center hover:bg-slate-100/80 rounded-b-xl border-t border-slate-100 transition-colors group touch-none"
+            title="위아래로 끌면 목록 높이를 늘리거나 줄일 수 있습니다."
           >
-            <GripHorizontal className="w-5 h-5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+            <GripHorizontal className="w-6 h-6 text-slate-400 group-hover:text-indigo-600 transition-colors" />
           </div>
         </section>
 
@@ -1030,7 +1065,7 @@ export default function App() {
           >
             {searchState.type !== 'NEW_WORK' ? <Lock className="w-4 h-4 text-slate-400" /> : <PlusCircle className="w-4 h-4" />}
             <span>신규 등록</span>
-            <span className="text-[11px] opacity-80 font-mono font-normal">(Alt+1)</span>
+            <span className="text-[11px] opacity-80 font-mono font-normal hidden sm:inline">(Alt+1)</span>
           </button>
 
           <button
@@ -1044,7 +1079,7 @@ export default function App() {
           >
             {searchState.type !== 'EXACT_MATCH' ? <Lock className="w-4 h-4 text-slate-400" /> : <ArrowRightLeft className="w-4 h-4" />}
             <span>이동 / 수정</span>
-            <span className="text-[11px] opacity-80 font-mono font-normal">(Alt+2)</span>
+            <span className="text-[11px] opacity-80 font-mono font-normal hidden sm:inline">(Alt+2)</span>
           </button>
 
           <button
