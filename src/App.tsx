@@ -56,7 +56,7 @@ const STATUS_TABS = [
   { id: '휴지통', label: '휴지통' },
 ];
 
-type SortOption = 'title_asc' | 'title_desc' | 'ep_desc' | 'ep_asc';
+type SortOption = 'title_asc' | 'title_desc' | 'ep_desc' | 'ep_asc' | 'err_my_gt_total' | 'diff_my_lt_total';
 
 export default function App() {
   const [searchInput, setSearchInput] = useState('');
@@ -316,7 +316,6 @@ export default function App() {
     }
   };
 
-  // 🎯 [⭐ 본거] 버튼을 '클릭했을 때만' 최신 회차 복사
   const handleSelectUpdateStatus = (btn: UpdateButtonType) => {
     setSelectedRawButton(btn);
 
@@ -382,7 +381,6 @@ export default function App() {
     }
   };
 
-  // 🎯 이동 및 수정 로직 (유저 입력값을 100% 보장하여 DB 저장)
   const handleMoveOrUpdate = async () => {
     if (searchState.type !== 'EXACT_MATCH') {
       setErrorMessage('⚠️ 등록된 작품 검색 상태일 때만 수정이 가능합니다.');
@@ -402,8 +400,6 @@ export default function App() {
     }
 
     const totalEp = episodeInput !== '' ? Number(episodeInput) : currentWork.episode;
-    
-    // 📌 수정한 내가 본 회차(myEpisodeInput) 숫자를 그대로 최우선 반영
     const myEp = myEpisodeInput !== '' ? Number(myEpisodeInput) : 0;
 
     const { error } = await supabase
@@ -513,6 +509,18 @@ export default function App() {
     const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
 
     const filtered = allWorks.filter((work) => {
+      const myEp = work.my_episode || 0;
+      const totalEp = work.episode || 0;
+
+      // 🔴 정렬 필터: 내가 본 회차 > 전체 회차 (데이터 오류)
+      if (sortOption === 'err_my_gt_total') {
+        if (myEp <= totalEp) return false;
+      }
+      // 🟢 정렬 필터: 내가 본 회차 < 전체 회차 (볼 회차 남음, 0 제외)
+      else if (sortOption === 'diff_my_lt_total') {
+        if (myEp === 0 || myEp >= totalEp) return false;
+      }
+
       if (activeTab === 'NEW') {
         if (!work.has_fire_emoji) return false;
 
@@ -543,6 +551,10 @@ export default function App() {
         return b.episode - a.episode;
       } else if (sortOption === 'ep_asc') {
         return a.episode - b.episode;
+      } else if (sortOption === 'err_my_gt_total') {
+        return ((b.my_episode || 0) - b.episode) - ((a.my_episode || 0) - a.episode);
+      } else if (sortOption === 'diff_my_lt_total') {
+        return (b.episode - (b.my_episode || 0)) - (a.episode - (a.my_episode || 0));
       }
       return 0;
     });
@@ -551,6 +563,20 @@ export default function App() {
   const formatStatusLabel = (status?: string) => {
     if (!status) return '기타';
     return status.replace('_', '-');
+  };
+
+  // 🎨 회차 비교에 따른 회차 박스 배경색/테두리 스타일 함수
+  const getEpisodeBoxStyle = (myEp: number, totalEp: number) => {
+    if (myEp > totalEp) {
+      // 🔴 오류: 내가 본 회차가 전체 회차보다 큼 (경고 빨강)
+      return 'bg-rose-100 border-rose-400 text-rose-900';
+    } 
+    if (myEp > 0 && myEp < totalEp) {
+      // 🟢 진행중: 볼 회차가 남아있음 (강조 인디고/에메랄드)
+      return 'bg-indigo-50/90 border-indigo-200 text-indigo-900';
+    }
+    // ⚪ 기본 상태 (myEp === 0 또는 myEp === totalEp)
+    return 'bg-white border-slate-200 text-slate-700';
   };
 
   return (
@@ -633,30 +659,34 @@ export default function App() {
                   <span>연관 작품 ({suggestions.length}개)</span>
                   <span className="text-[10px] text-slate-400 font-normal">가나다순 정렬됨</span>
                 </div>
-                {suggestions.map((work) => (
-                  <div
-                    key={work.id}
-                    onClick={() => handleSelectSuggestion(work)}
-                    className="p-3 hover:bg-indigo-50/90 cursor-pointer border-b border-slate-100 last:border-none flex items-center justify-between transition-colors gap-1.5"
-                  >
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">{work.title}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
-                      <div className="bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[11px] font-bold text-amber-900 font-mono tabular-nums flex items-center w-[115px]">
-                        <span className="w-12 text-right text-amber-600 font-extrabold">📌{work.my_episode || 0}</span>
-                        <span className="w-3 text-center text-amber-400 font-normal">/</span>
-                        <span className="w-12 text-right text-amber-900">{work.episode}화</span>
+                {suggestions.map((work) => {
+                  const myEp = work.my_episode || 0;
+                  const totalEp = work.episode || 0;
+                  return (
+                    <div
+                      key={work.id}
+                      onClick={() => handleSelectSuggestion(work)}
+                      className="p-3 hover:bg-indigo-50/90 cursor-pointer border-b border-slate-100 last:border-none flex items-center justify-between transition-colors gap-1.5"
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">{work.title}</span>
                       </div>
 
-                      <span className="w-16 text-center text-[10px] bg-slate-100 text-slate-700 px-1 py-0.5 rounded font-bold border border-slate-200 truncate whitespace-nowrap">
-                        {formatStatusLabel(work.status)}
-                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <div className={`border px-2 py-0.5 rounded text-[11px] font-bold font-mono tabular-nums flex items-center w-[115px] ${getEpisodeBoxStyle(myEp, totalEp)}`}>
+                          <span className={`w-12 text-right font-extrabold ${myEp > totalEp ? 'text-rose-700' : 'text-amber-600'}`}>📌{myEp}</span>
+                          <span className="w-3 text-center text-slate-300 font-normal">/</span>
+                          <span className="w-12 text-right">{totalEp}화</span>
+                        </div>
+
+                        <span className="w-16 text-center text-[10px] bg-slate-100 text-slate-700 px-1 py-0.5 rounded font-bold border border-slate-200 truncate whitespace-nowrap">
+                          {formatStatusLabel(work.status)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -867,16 +897,19 @@ export default function App() {
               <span>전체 작품 목록 ({filteredAndSortedWorks.length})</span>
             </span>
 
+            {/* 🎯 새로운 회차 비교 필터 드롭다운 옵션 추가 */}
             <div className="flex items-center gap-2">
               <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value as SortOption)}
-                className="bg-slate-50 border border-slate-200 text-slate-600 text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                className="bg-slate-50 border border-slate-200 text-slate-600 text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer font-bold"
               >
                 <option value="title_asc">이름 (ㄱ-ㅎ)</option>
                 <option value="title_desc">이름 (ㅎ-ㄱ)</option>
-                <option value="ep_desc">회차 높은순</option>
-                <option value="ep_asc">회차 낮은순</option>
+                <option value="ep_desc">전체회차 높은순</option>
+                <option value="ep_asc">전체회차 낮은순</option>
+                <option value="err_my_gt_total">🚨 오류 (내가 본 > 전체)</option>
+                <option value="diff_my_lt_total">📖 볼 회차 남음 (내가 본 < 전체)</option>
               </select>
 
               {position && (
@@ -919,18 +952,21 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 목록 영역 */}
+          {/* 📋 조건별 강조 색상 적용 목록 영역 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-2 overflow-y-auto pr-0.5 transition-[height] duration-75"
           >
             {filteredAndSortedWorks.length === 0 ? (
               <div className="p-4 text-center text-xs text-slate-400 italic">
-                해당 분류의 작품이 없습니다.
+                해당하는 작품이 없습니다.
               </div>
             ) : (
               filteredAndSortedWorks.map((work) => {
                 const myEp = work.my_episode || 0;
+                const totalEp = work.episode || 0;
+                const isError = myEp > totalEp;
+
                 return (
                   <div 
                     key={work.id}
@@ -946,15 +982,15 @@ export default function App() {
                       <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                     </div>
 
-                    {/* 📐 3단 고정 컬럼 회차 박스 */}
+                    {/* 📐 3단 고정 컬럼 + 비교 색상 반영 회차 박스 */}
                     <div className="flex items-center gap-1 shrink-0 whitespace-nowrap">
-                      <div className="bg-white border border-slate-200 px-1.5 sm:px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold shadow-2xs flex items-center font-mono tabular-nums w-[110px] sm:w-[125px]">
-                        <span className="flex-1 text-right text-amber-600 font-extrabold truncate">
+                      <div className={`border px-1.5 sm:px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold shadow-2xs flex items-center font-mono tabular-nums w-[110px] sm:w-[125px] ${getEpisodeBoxStyle(myEp, totalEp)}`}>
+                        <span className={`flex-1 text-right font-extrabold truncate ${isError ? 'text-rose-700' : 'text-amber-600'}`}>
                           📌{myEp}
                         </span>
                         <span className="w-3 text-center text-slate-300 shrink-0">/</span>
-                        <span className="flex-1 text-right text-slate-700 font-semibold truncate">
-                          {work.episode}화
+                        <span className="flex-1 text-right truncate">
+                          {totalEp}화
                         </span>
                       </div>
                       
