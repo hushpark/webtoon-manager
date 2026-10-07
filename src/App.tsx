@@ -361,6 +361,7 @@ export default function App() {
     const hasFire = ['완결', '시즌 완결', '연재중', '휴재', '100회 미만'].includes(selectedStatus);
     const totalEp = Number(episodeInput) || 0;
     
+    // 유저가 숫자를 입력했으면 그 값 우선 저장
     const isBought = selectedStatus.startsWith('본거_');
     const myEp = myEpisodeInput !== '' 
       ? Number(myEpisodeInput) 
@@ -384,6 +385,7 @@ export default function App() {
     }
   };
 
+  // 🎯 이동 및 수정 로직 완전 보완 (입력창의 myEpisodeInput 최우선 반영)
   const handleMoveOrUpdate = async () => {
     if (searchState.type !== 'EXACT_MATCH') {
       setErrorMessage('⚠️ 등록된 작품 검색 상태일 때만 수정이 가능합니다.');
@@ -402,12 +404,16 @@ export default function App() {
       return;
     }
 
-    const totalEp = Number(episodeInput) || 0;
+    const totalEp = episodeInput !== '' ? Number(episodeInput) : currentWork.episode;
     
-    const isBought = selectedStatus.startsWith('본거_');
-    const myEp = myEpisodeInput !== '' 
-      ? Number(myEpisodeInput) 
-      : (isBought ? totalEp : (currentWork.my_episode || 0));
+    // 📌 수정한 내가 본 회차(myEpisodeInput) 값을 최우선 반영
+    let myEp: number;
+    if (myEpisodeInput !== '') {
+      myEp = Number(myEpisodeInput);
+    } else {
+      const isBought = selectedStatus.startsWith('본거_');
+      myEp = isBought ? totalEp : (currentWork.my_episode || 0);
+    }
 
     const { error } = await supabase
       .from('works')
@@ -722,7 +728,6 @@ export default function App() {
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors`}>
           
           <div className="grid grid-cols-2 gap-2.5">
-            {/* 🎯 클릭 시 자동 전체 블록 선택 처리된 입력 필드 */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">최신 회차 (전체)</label>
               <input
