@@ -512,11 +512,9 @@ export default function App() {
       const myEp = work.my_episode || 0;
       const totalEp = work.episode || 0;
 
-      // 🔴 정렬 필터: 내가 본 회차 > 전체 회차 (데이터 오류)
       if (sortOption === 'err_my_gt_total') {
         if (myEp <= totalEp) return false;
       }
-      // 🟢 정렬 필터: 내가 본 회차 < 전체 회차 (볼 회차 남음, 0 제외)
       else if (sortOption === 'diff_my_lt_total') {
         if (myEp === 0 || myEp >= totalEp) return false;
       }
@@ -565,17 +563,13 @@ export default function App() {
     return status.replace('_', '-');
   };
 
-  // 🎨 회차 비교에 따른 회차 박스 배경색/테두리 스타일 함수
   const getEpisodeBoxStyle = (myEp: number, totalEp: number) => {
     if (myEp > totalEp) {
-      // 🔴 오류: 내가 본 회차가 전체 회차보다 큼 (경고 빨강)
       return 'bg-rose-100 border-rose-400 text-rose-900';
     } 
     if (myEp > 0 && myEp < totalEp) {
-      // 🟢 진행중: 볼 회차가 남아있음 (강조 인디고/에메랄드)
       return 'bg-indigo-50/90 border-indigo-200 text-indigo-900';
     }
-    // ⚪ 기본 상태 (myEp === 0 또는 myEp === totalEp)
     return 'bg-white border-slate-200 text-slate-700';
   };
 
@@ -897,7 +891,7 @@ export default function App() {
               <span>전체 작품 목록 ({filteredAndSortedWorks.length})</span>
             </span>
 
-            {/* 🎯 새로운 회차 비교 필터 드롭다운 옵션 추가 */}
+            {/* 🎯 문법 오류 원인이었던 부등호를 '초과', '미만' 단어로 안전하게 변경 */}
             <div className="flex items-center gap-2">
               <select
                 value={sortOption}
@@ -908,8 +902,8 @@ export default function App() {
                 <option value="title_desc">이름 (ㅎ-ㄱ)</option>
                 <option value="ep_desc">전체회차 높은순</option>
                 <option value="ep_asc">전체회차 낮은순</option>
-                <option value="err_my_gt_total">🚨 오류 (내가 본 > 전체)</option>
-                <option value="diff_my_lt_total">📖 볼 회차 남음 (내가 본 < 전체)</option>
+                <option value="err_my_gt_total">🚨 오류 (본 회차 초과)</option>
+                <option value="diff_my_lt_total">📖 볼 회차 남음 (본 회차 미만)</option>
               </select>
 
               {position && (
