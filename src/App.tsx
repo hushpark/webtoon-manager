@@ -316,12 +316,11 @@ export default function App() {
     }
   };
 
-  // 🎯 [⭐ 본거] 버튼을 클릭하는 순간에만 최신 회차 대입
+  // 🎯 [⭐ 본거] 버튼을 '클릭했을 때만' 최신 회차 복사
   const handleSelectUpdateStatus = (btn: UpdateButtonType) => {
     setSelectedRawButton(btn);
 
     if (btn === '본거') {
-      // 본거 버튼 클릭 시에만 최신 회차를 내가 본 회차로 가져옴
       if (episodeInput !== '') {
         setMyEpisodeInput(episodeInput);
       }
@@ -363,10 +362,7 @@ export default function App() {
     const hasFire = ['완결', '시즌 완결', '연재중', '휴재', '100회 미만'].includes(selectedStatus);
     const totalEp = Number(episodeInput) || 0;
     
-    const isBought = selectedStatus.startsWith('본거_');
-    const myEp = myEpisodeInput !== '' 
-      ? Number(myEpisodeInput) 
-      : (isBought ? totalEp : 0);
+    const myEp = myEpisodeInput !== '' ? Number(myEpisodeInput) : 0;
 
     const { error } = await supabase.from('works').insert({
       title,
@@ -386,7 +382,7 @@ export default function App() {
     }
   };
 
-  // 🎯 이동 / 수정 완벽 적용 (입력창의 myEpisodeInput 값을 그대로 저장)
+  // 🎯 이동 및 수정 로직 (유저 입력값을 100% 보장하여 DB 저장)
   const handleMoveOrUpdate = async () => {
     if (searchState.type !== 'EXACT_MATCH') {
       setErrorMessage('⚠️ 등록된 작품 검색 상태일 때만 수정이 가능합니다.');
@@ -407,10 +403,8 @@ export default function App() {
 
     const totalEp = episodeInput !== '' ? Number(episodeInput) : currentWork.episode;
     
-    // 📌 유저가 입력한 myEpisodeInput 숫자를 강제 덮어쓰기 없이 무조건 저장
-    const myEp = myEpisodeInput !== '' 
-      ? Number(myEpisodeInput) 
-      : (currentWork.my_episode || 0);
+    // 📌 수정한 내가 본 회차(myEpisodeInput) 숫자를 그대로 최우선 반영
+    const myEp = myEpisodeInput !== '' ? Number(myEpisodeInput) : 0;
 
     const { error } = await supabase
       .from('works')
