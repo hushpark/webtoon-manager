@@ -62,7 +62,6 @@ export default function App() {
   const [searchInput, setSearchInput] = useState('');
   const [searchState, setSearchState] = useState<SearchState>({ type: 'IDLE' });
   const [selectedStatus, setSelectedStatus] = useState<WorkStatus | ''>('');
-  const [selectedRawButton, setSelectedRawButton] = useState<string>('');
   const [episodeInput, setEpisodeInput] = useState<number | ''>('');
   const [myEpisodeInput, setMyEpisodeInput] = useState<number | ''>('');
   const [logs, setLogs] = useState<string[]>([]);
@@ -215,7 +214,6 @@ export default function App() {
     setSuggestions([]);
     setShowSuggestions(false);
     setSelectedStatus('');
-    setSelectedRawButton('');
     setEpisodeInput('');
     setMyEpisodeInput('');
     setErrorMessage(null);
@@ -231,7 +229,6 @@ export default function App() {
       setShowSuggestions(false);
       setSearchState({ type: 'IDLE' });
       setSelectedStatus('');
-      setSelectedRawButton('');
       setEpisodeInput('');
       setMyEpisodeInput('');
       return;
@@ -262,11 +259,9 @@ export default function App() {
         setEpisodeInput(exact.episode);
         setMyEpisodeInput(exact.my_episode !== undefined ? exact.my_episode : 0);
         setSelectedStatus(exact.status as WorkStatus);
-        setSelectedRawButton(exact.status);
       } else {
         setSearchState({ type: 'NEW_WORK', query: trimmed });
         setSelectedStatus('');
-        setSelectedRawButton('');
         setEpisodeInput('');
         setMyEpisodeInput('');
       }
@@ -280,7 +275,6 @@ export default function App() {
     setEpisodeInput(work.episode);
     setMyEpisodeInput(work.my_episode !== undefined ? work.my_episode : 0);
     setSelectedStatus(work.status as WorkStatus);
-    setSelectedRawButton(work.status);
     setLogs((prev) => Array.from(new Set([work.title, ...prev])).slice(0, 10));
     resetTimer();
 
@@ -310,16 +304,12 @@ export default function App() {
       setEpisodeInput(exact.episode);
       setMyEpisodeInput(exact.my_episode !== undefined ? exact.my_episode : 0);
       setSelectedStatus(exact.status as WorkStatus);
-      setSelectedRawButton(exact.status);
     } else {
       setSearchState({ type: 'NEW_WORK', query: trimmed });
     }
   };
 
-  // 🎯 본거 토글 및 양방향 직관적 상태 변경 함수
   const handleSelectUpdateStatus = (btn: UpdateButtonType) => {
-    setSelectedRawButton(btn);
-
     if (searchState.type !== 'EXACT_MATCH') {
       setErrorMessage('⚠️ 작품을 선택한 상태에서만 분류 지정을 변경할 수 있습니다.');
       return;
@@ -328,14 +318,11 @@ export default function App() {
     const currentStatus = searchState.work.status;
 
     if (btn === '본거') {
-      // 📌 [⭐ 본거] 토글 ON/OFF 로직
       if (selectedStatus.startsWith('본거_')) {
-        // 이미 '본거_' 상태인 경우 -> '본거' 해제하여 일반 상태로 복원
         let normalStatus = selectedStatus.replace('본거_', '') as WorkStatus;
         if ((normalStatus as string) === '시즌완결') normalStatus = '시즌 완결' as WorkStatus;
         setSelectedStatus(normalStatus);
       } else {
-        // 일반 상태인 경우 -> '본거' 설정 (회차 자동 동기화)
         if (episodeInput !== '') setMyEpisodeInput(episodeInput);
 
         if (currentStatus === '연재중') setSelectedStatus('본거_연재중' as WorkStatus);
@@ -345,16 +332,13 @@ export default function App() {
         else setSelectedStatus('본거_완결' as WorkStatus);
       }
     } else {
-      // 📌 [완결], [연재중] 등 세부 버튼을 직접 클릭한 경우
       if (selectedStatus.startsWith('본거_')) {
-        // 현재 '본거'가 켜져 있는 상태라면 -> '본거-완결', '본거-연재중' 등 본거 상태 유지하며 전환
         if (btn === '연재중') setSelectedStatus('본거_연재중' as WorkStatus);
         else if (btn === '완결') setSelectedStatus('본거_완결' as WorkStatus);
         else if (btn === '시즌 완결') setSelectedStatus('본거_시즌완결' as WorkStatus);
         else if (btn === '휴재') setSelectedStatus('본거_휴재' as WorkStatus);
         else setSelectedStatus(btn as WorkStatus);
       } else {
-        // 본거가 꺼져있는 상태면 일반 상태 지정
         setSelectedStatus(btn as WorkStatus);
       }
     }
