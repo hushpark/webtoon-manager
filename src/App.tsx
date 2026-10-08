@@ -521,7 +521,15 @@ export default function App() {
 
   const filteredAndSortedWorks = useMemo(() => {
     const now = new Date().getTime();
-    const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+    const isFireValid = (work: Work) => {
+      if (!work.has_fire_emoji) return false;
+      const dateStr = work.created_at || work.updated_at;
+      if (!dateStr) return false;
+      const workDate = new Date(dateStr).getTime();
+      return (now - workDate) <= SEVEN_DAYS_MS;
+    };
 
     const filtered = allWorks.filter((work) => {
       const myEp = work.my_episode || 0;
@@ -535,13 +543,7 @@ export default function App() {
       }
 
       if (activeTab === 'NEW') {
-        if (!work.has_fire_emoji) return false;
-
-        const dateStr = work.created_at || work.updated_at;
-        if (!dateStr) return false;
-
-        const workDate = new Date(dateStr).getTime();
-        if (now - workDate > TWO_WEEKS_MS) return false;
+        if (!isFireValid(work)) return false;
       }
       else if (activeTab === 'ALL') {
         return true;
@@ -586,6 +588,15 @@ export default function App() {
       return 'bg-indigo-50/90 border-indigo-200 text-indigo-900';
     }
     return 'bg-white border-slate-200 text-slate-700';
+  };
+
+  const checkHasFire = (work: Work) => {
+    if (!work.has_fire_emoji) return false;
+    const dateStr = work.created_at || work.updated_at;
+    if (!dateStr) return false;
+    const now = new Date().getTime();
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    return (now - new Date(dateStr).getTime()) <= SEVEN_DAYS_MS;
   };
 
   return (
@@ -882,7 +893,7 @@ export default function App() {
           </section>
         )}
 
-        {/* 📚 모바일/PC 세로 한 줄(1열) 고정 목록 상자 */}
+        {/* 📚 모바일/PC 목록 상자 (2층 우측 레이아웃 적용) */}
         <section 
           ref={cardBoxRef}
           style={position ? {
@@ -969,10 +980,10 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 무조건 세로 1열 고정 + 제목 2줄 표출 (line-clamp-2) 레이아웃 */}
+          {/* 📋 2층 구조 우측 레이아웃 적용 목록 */}
           <div 
             style={{ height: `${listHeight}px` }} 
-            className="space-y-2 overflow-y-auto pr-0.5 transition-[height] duration-75"
+            className="space-y-2.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
           >
             {filteredAndSortedWorks.length === 0 ? (
               <div className="p-4 text-center text-xs text-slate-400 italic">
@@ -983,46 +994,51 @@ export default function App() {
                 const myEp = work.my_episode || 0;
                 const totalEp = work.episode || 0;
                 const isError = myEp > totalEp;
+                const showFire = checkHasFire(work);
 
                 return (
                   <div 
                     key={work.id}
                     onClick={() => handleSelectSuggestion(work)}
-                    className="p-2.5 sm:p-3 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2 shadow-2xs min-h-[56px]"
+                    className="p-2.5 sm:p-3 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2.5 shadow-2xs min-h-[64px]"
                     title="클릭 시 선택 및 제목이 복사됩니다."
                   >
-                    {/* 📌 제목 영역: 가로 폭을 충분히 확보하면서 2줄까지 자동 표출 */}
+                    {/* 📌 왼쪽: 제목 영역 (최대 2줄) */}
                     <div className="flex items-center gap-1.5 min-w-0 flex-1 my-auto">
-                      {work.has_fire_emoji && <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />}
+                      {showFire && <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />}
                       <span className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-indigo-600 leading-snug line-clamp-2">
                         {work.title}
                       </span>
                       <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hidden sm:inline" />
                     </div>
 
-                    {/* 📌 오른쪽 수치/버튼 영역: 세로 중앙 자동 정렬 */}
-                    <div className="flex items-center gap-1 shrink-0 whitespace-nowrap my-auto">
-                      <div className={`border px-1.5 sm:px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold shadow-2xs flex items-center font-mono tabular-nums w-[105px] sm:w-[125px] ${getEpisodeBoxStyle(myEp, totalEp)}`}>
-                        <span className={`flex-1 text-right font-extrabold truncate ${isError ? 'text-rose-700' : 'text-amber-600'}`}>
+                    {/* 📌 오른쪽: 2층 세로 구조 정돈 (1층: 회차박스 / 2층: +1버튼 + 분류태그) */}
+                    <div className="flex flex-col items-end gap-1 shrink-0 whitespace-nowrap my-auto">
+                      {/* 1층: 회차 박스 */}
+                      <div className={`border px-2 py-0.5 rounded-lg text-[11px] sm:text-xs font-bold shadow-2xs flex items-center font-mono tabular-nums w-[130px] justify-between ${getEpisodeBoxStyle(myEp, totalEp)}`}>
+                        <span className={`font-extrabold truncate ${isError ? 'text-rose-700' : 'text-amber-600'}`}>
                           📌{myEp}
                         </span>
-                        <span className="w-2.5 text-center text-slate-300 shrink-0">/</span>
-                        <span className="flex-1 text-right truncate">
+                        <span className="text-slate-300 font-normal">/</span>
+                        <span className="truncate">
                           {totalEp}화
                         </span>
                       </div>
                       
-                      <button
-                        onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
-                        className="px-1.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[11px] sm:text-xs font-black rounded-lg border border-amber-600 transition-all flex items-center gap-0.5 shadow-xs shrink-0 active:scale-95"
-                        title="내가 본 회차 +1화 빠른 증가"
-                      >
-                        <Plus className="w-3 h-3" />1
-                      </button>
+                      {/* 2층: +1 버튼 및 상태 태그 */}
+                      <div className="flex items-center gap-1 w-[130px] justify-end">
+                        <button
+                          onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
+                          className="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] sm:text-[11px] font-black rounded-md border border-amber-600 transition-all flex items-center gap-0.5 shadow-xs shrink-0 active:scale-95"
+                          title="내가 본 회차 +1화 빠른 증가"
+                        >
+                          <Plus className="w-3 h-3" />1
+                        </button>
 
-                      <span className="px-1 py-1 text-[10px] sm:text-[11px] bg-slate-200/80 text-slate-700 rounded-lg font-bold truncate shrink-0 border border-slate-300/60 w-[60px] sm:w-[62px] text-center">
-                        {formatStatusLabel(work.status)}
-                      </span>
+                        <span className="px-1.5 py-0.5 text-[10px] sm:text-[11px] bg-slate-200/90 text-slate-700 rounded-md font-bold truncate shrink-0 border border-slate-300/60 max-w-[90px] text-center">
+                          {formatStatusLabel(work.status)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
