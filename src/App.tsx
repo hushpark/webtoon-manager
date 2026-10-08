@@ -79,7 +79,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('NEW');
   const [sortOption, setSortOption] = useState<SortOption>('title_asc');
 
-  // 모바일/PC 반응형 초기 높이 설정 (모바일 스크린에서는 기본 520px)
   const [listHeight, setListHeight] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 640) {
       return 520;
@@ -91,7 +90,6 @@ export default function App() {
   const startYRef = useRef(0);
   const startHeightRef = useRef(420);
 
-  // 위치 이동(Floating Drag) 관련 상태
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
   const isDraggingBoxRef = useRef(false);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
@@ -101,7 +99,6 @@ export default function App() {
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const cardBoxRef = useRef<HTMLDivElement>(null);
 
-  // 탭 가로 드래그 조작 Ref & State
   const tabsRef = useRef<HTMLDivElement>(null);
   const isDraggingTabRef = useRef(false);
   const startXRef = useRef(0);
@@ -129,7 +126,6 @@ export default function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 키보드 단축키 이벤트
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -146,7 +142,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchState, selectedStatus, episodeInput, myEpisodeInput, searchInput]);
 
-  // 마우스 및 터치 포인터 이동 통합 이벤트 처리
   useEffect(() => {
     const handleMove = (clientY: number, clientX: number) => {
       if (isResizingRef.current) {
@@ -191,9 +186,10 @@ export default function App() {
     };
   }, []);
 
-  // 박스 위치 이동 시작 (마우스/터치 지원)
   const startDraggingBox = (clientX: number, clientY: number, target: HTMLElement) => {
     if (target.tagName === 'SELECT') return;
+    if (window.innerWidth < 640) return;
+
     isDraggingBoxRef.current = true;
     
     if (cardBoxRef.current) {
@@ -210,7 +206,6 @@ export default function App() {
     document.body.style.userSelect = 'none';
   };
 
-  // 목록 높이 조절 시작 (마우스/터치 지원)
   const startResizing = (clientY: number) => {
     isResizingRef.current = true;
     startYRef.current = clientY;
@@ -634,7 +629,7 @@ export default function App() {
       </header>
 
       {/* 메인 컨테이너 */}
-      <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1">
+      <main className="w-full max-w-2xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1 flex flex-col items-stretch">
         
         {/* 1. 작품 검색 입력 */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative`}>
@@ -666,7 +661,6 @@ export default function App() {
               </button>
             )}
 
-            {/* 🔍 연관 작품 자동완성 */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto">
                 <div className="p-2.5 text-xs font-extrabold text-slate-500 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
@@ -684,7 +678,7 @@ export default function App() {
                     >
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
                         <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="font-bold text-xs sm:text-sm text-slate-900 truncate">{work.title}</span>
+                        <span className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-2 leading-tight">{work.title}</span>
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0">
@@ -713,7 +707,7 @@ export default function App() {
             )}
 
             {!loading && searchState.type === 'IDLE' && (
-              <div className="flex items-center gap-1.5 text-xs text-slate-500 py-0.5 flex-wrap">
+              <div className="flex items-center justify-center gap-1.5 text-xs text-slate-500 py-0.5 flex-wrap">
                 <span>제목을 입력하세요.</span>
                 <span className="text-slate-300">|</span>
                 <span className="inline-flex items-center gap-1">
@@ -731,8 +725,8 @@ export default function App() {
             {!loading && searchState.type === 'EXACT_MATCH' && (
               <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl text-xs sm:text-sm text-blue-900">
                 <div className="font-extrabold text-blue-700 text-sm sm:text-base flex items-center justify-between">
-                  <span>🔎 '{searchState.work.title}'</span>
-                  <span className="bg-blue-600 text-white font-bold px-2 py-0.5 rounded text-xs shadow-xs shrink-0">
+                  <span className="line-clamp-2 leading-tight">🔎 '{searchState.work.title}'</span>
+                  <span className="bg-blue-600 text-white font-bold px-2 py-0.5 rounded text-xs shadow-xs shrink-0 ml-2">
                     현재: {formatStatusLabel(searchState.work.status)}
                   </span>
                 </div>
@@ -802,7 +796,7 @@ export default function App() {
             </div>
 
             {searchState.type === 'NEW_WORK' && (
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                 {NEW_WORK_STATUS_OPTIONS.map((opt) => {
                   const isSelected = selectedStatus === opt;
                   return (
@@ -825,7 +819,7 @@ export default function App() {
             )}
 
             {searchState.type === 'EXACT_MATCH' && (
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-3 sm:grid-cols-7 gap-1.5">
                 {UPDATE_STATUS_BUTTONS.map((btn) => {
                   const isBoughtActive = selectedStatus.startsWith('본거_');
                   const isSelected = btn === '본거' ? isBoughtActive : (selectedStatus === btn || selectedStatus === `본거_${btn}`.replace('본거_시즌 완결', '본거_시즌완결'));
@@ -835,7 +829,7 @@ export default function App() {
                       key={btn}
                       type="button"
                       onClick={() => handleSelectUpdateStatus(btn)}
-                      className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1 ${
+                      className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1 ${
                         btn === '본거'
                           ? isBoughtActive
                             ? 'bg-purple-600 text-white border-purple-600 shadow-sm scale-[1.02]'
@@ -845,8 +839,8 @@ export default function App() {
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      {isSelected && <Check className="w-3.5 h-3.5" />}
-                      <span>{btn === '본거' ? '⭐ 본거' : btn}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                      <span className="truncate">{btn === '본거' ? '⭐ 본거' : btn}</span>
                     </button>
                   );
                 })}
@@ -888,7 +882,7 @@ export default function App() {
           </section>
         )}
 
-        {/* 📚 모바일/PC 드래그 이동 및 크기 조절 가능한 작품 목록 상자 */}
+        {/* 📚 모바일/PC 작품 목록 상자 */}
         <section 
           ref={cardBoxRef}
           style={position ? {
@@ -896,12 +890,12 @@ export default function App() {
             left: `${position.x}px`,
             top: `${position.y}px`,
             width: '100%',
-            maxWidth: '576px',
+            maxWidth: '672px',
             zIndex: 50
           } : {}}
           className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-xl space-y-3 transition-colors`}
         >
-          {/* 상단 드래그 헤더 (터치/마우스 이동 대응) */}
+          {/* 상단 드래그 헤더 */}
           <div 
             onMouseDown={(e) => startDraggingBox(e.clientX, e.clientY, e.target as HTMLElement)}
             onTouchStart={(e) => {
@@ -936,7 +930,7 @@ export default function App() {
                 <button
                   onClick={() => setPosition(null)}
                   className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-md transition-all"
-                  title="기본 위치로 복원"
+                  title="기본 중앙 위치로 복원"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>
@@ -944,7 +938,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* 탭 영역 (터치 가로 스크롤 지원) */}
+          {/* 탭 영역 */}
           <div 
             ref={tabsRef}
             onMouseDown={(e) => handleTabStart(e.pageX)}
@@ -975,66 +969,70 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 조건별 강조 색상 적용 목록 영역 */}
+          {/* 📋 제목 2줄 표출 (line-clamp-2) & 세로 중앙 정렬 레이아웃 적용 */}
           <div 
             style={{ height: `${listHeight}px` }} 
-            className="space-y-2 overflow-y-auto pr-0.5 transition-[height] duration-75"
+            className="overflow-y-auto pr-0.5 transition-[height] duration-75"
           >
             {filteredAndSortedWorks.length === 0 ? (
               <div className="p-4 text-center text-xs text-slate-400 italic">
                 해당하는 작품이 없습니다.
               </div>
             ) : (
-              filteredAndSortedWorks.map((work) => {
-                const myEp = work.my_episode || 0;
-                const totalEp = work.episode || 0;
-                const isError = myEp > totalEp;
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {filteredAndSortedWorks.map((work) => {
+                  const myEp = work.my_episode || 0;
+                  const totalEp = work.episode || 0;
+                  const isError = myEp > totalEp;
 
-                return (
-                  <div 
-                    key={work.id}
-                    onClick={() => handleSelectSuggestion(work)}
-                    className="p-2.5 sm:p-3 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-1.5 shadow-2xs"
-                    title="클릭 시 선택 및 제목이 복사됩니다."
-                  >
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      {work.has_fire_emoji && <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />}
-                      <span className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-indigo-600 truncate leading-snug">
-                        {work.title}
-                      </span>
-                      <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0 whitespace-nowrap">
-                      <div className={`border px-1.5 sm:px-2 py-1 rounded-lg text-[11px] sm:text-xs font-bold shadow-2xs flex items-center font-mono tabular-nums w-[110px] sm:w-[125px] ${getEpisodeBoxStyle(myEp, totalEp)}`}>
-                        <span className={`flex-1 text-right font-extrabold truncate ${isError ? 'text-rose-700' : 'text-amber-600'}`}>
-                          📌{myEp}
+                  return (
+                    <div 
+                      key={work.id}
+                      onClick={() => handleSelectSuggestion(work)}
+                      className="p-2.5 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-1.5 shadow-2xs min-h-[56px]"
+                      title="클릭 시 선택 및 제목이 복사됩니다."
+                    >
+                      {/* 📌 제목 영역: 폰트 크기 유지 + 최대 2줄 표시 */}
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1 my-auto">
+                        {work.has_fire_emoji && <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20 shrink-0" />}
+                        <span className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-indigo-600 leading-tight line-clamp-2">
+                          {work.title}
                         </span>
-                        <span className="w-3 text-center text-slate-300 shrink-0">/</span>
-                        <span className="flex-1 text-right truncate">
-                          {totalEp}화
+                        <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hidden sm:inline" />
+                      </div>
+
+                      {/* 📌 오른쪽 수치/버튼 영역: 세로 중앙 자동 정렬 */}
+                      <div className="flex items-center gap-1 shrink-0 whitespace-nowrap my-auto">
+                        <div className={`border px-1.5 py-1 rounded-lg text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[105px] ${getEpisodeBoxStyle(myEp, totalEp)}`}>
+                          <span className={`flex-1 text-right font-extrabold truncate ${isError ? 'text-rose-700' : 'text-amber-600'}`}>
+                            📌{myEp}
+                          </span>
+                          <span className="w-2.5 text-center text-slate-300 shrink-0">/</span>
+                          <span className="flex-1 text-right truncate">
+                            {totalEp}화
+                          </span>
+                        </div>
+                        
+                        <button
+                          onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
+                          className="px-1.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-black rounded-lg border border-amber-600 transition-all flex items-center gap-0.5 shadow-xs shrink-0 active:scale-95"
+                          title="내가 본 회차 +1화 빠른 증가"
+                        >
+                          <Plus className="w-3 h-3" />1
+                        </button>
+
+                        <span className="px-1 py-1 text-[10px] bg-slate-200/80 text-slate-700 rounded-lg font-bold truncate shrink-0 border border-slate-300/60 w-[58px] text-center">
+                          {formatStatusLabel(work.status)}
                         </span>
                       </div>
-                      
-                      <button
-                        onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
-                        className="px-1.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[11px] sm:text-xs font-black rounded-lg border border-amber-600 transition-all flex items-center gap-0.5 shadow-xs shrink-0 active:scale-95"
-                        title="내가 본 회차 +1화 빠른 증가"
-                      >
-                        <Plus className="w-3 h-3" />1
-                      </button>
-
-                      <span className="px-1 py-1 text-[10px] sm:text-[11px] bg-slate-200/80 text-slate-700 rounded-lg font-bold truncate shrink-0 border border-slate-300/60 w-[62px] text-center">
-                        {formatStatusLabel(work.status)}
-                      </span>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
           </div>
 
-          {/* 높이 조절 손잡이 (터치 드래그 연동) */}
+          {/* 높이 조절 손잡이 */}
           <div
             onMouseDown={(e) => startResizing(e.clientY)}
             onTouchStart={(e) => {
@@ -1053,7 +1051,7 @@ export default function App() {
 
       {/* 하단 고정 액션 버튼 바 */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-3.5 sm:px-6 py-3 flex justify-center">
-        <div className="w-full max-w-xl flex gap-2">
+        <div className="w-full max-w-2xl flex gap-2">
           <button
             onClick={handleRegister}
             disabled={searchState.type !== 'NEW_WORK'}
