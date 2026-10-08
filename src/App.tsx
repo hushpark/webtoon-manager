@@ -105,7 +105,18 @@ export default function App() {
   const scrollLeftRef = useRef(0);
   const hasMovedRef = useRef(false);
 
+  // 휠 조작 민감도 제어를 위한 Debounce 타임스탬프
+  const lastWheelTimeRef = useRef<number>(0);
+  // 터치 스와이프 제어 좌표
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+
   const cleanTitle = (str: string) => str.replace(/\s+/g, '').toLowerCase();
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 1500);
+  };
 
   const fetchAllWorks = async () => {
     const { data } = await supabase.from('works').select('*').order('updated_at', { ascending: false });
@@ -298,8 +309,7 @@ export default function App() {
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(work.title).then(() => {
-        setToastMessage(`📋 '${work.title}' 제목이 복사되었습니다.`);
-        setTimeout(() => setToastMessage(null), 2000);
+        showToast(`📋 '${work.title}' 제목이 복사되었습니다.`);
       }).catch(() => {});
     }
   };
@@ -482,6 +492,138 @@ export default function App() {
       }
     }
   };
+
+  // -------------------------------------------------------------
+  // 🔄 휠 / 터치 스와이프 조작 관련 핵심 핸들러
+  // -------------------------------------------------------------
+
+  // 1. 상단 입력창 휠 조작 (수동 저장)
+  const handleInputWheel = (
+    e: React.WheelEvent, 
+    type: 'TOTAL' | 'MY'
+  ) => {
+    e.preventDefault();
+    const now = Date.now();
+    if (now - lastWheelTimeRef.current < 150) return; // Debounce 150ms
+    lastWheelTimeRef.current = now;
+
+    const delta = e.deltaY < 0 ? 1 : -1;
+
+    if (type === 'TOTAL') {
+      setEpisodeInput((prev) => Math.max(0, (Number(prev) || 0) + delta));
+    } else {
+      setMyEpisodeInput((prev) => Math.max(0, (Number(prev) || 0) + delta));
+    }
+  };
+
+  // 2. 하단 목록 카드 회차 휠 조작 (즉시 DB 자동 저장)
+  const handleListWheel = async (
+    e: React.WheelEvent, 
+    work: Work, 
+    type: 'TOTAL' | 'MY'
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const now = Date.now();
+    if (now - lastWheelTimeRef.current < 200) return; // Debounce 200ms
+    lastWheelTimeRef.current = now;
+
+    const delta = e.deltaY < 0 ? 1 : -1;
+
+    if (type === 'MY') {
+      const nextMyEp = Math.max(0, (work.my_episode || 0) + delta);
+      const { error } = await supabase
+        .from('works')
+        .update({ 
+          my_episode: nextMyEp, 
+          has_fire_emoji: false,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', work.id);
+
+      if (!error) {
+        fetchAllWorks();
+        showToast(`📌 '${work.title}' 본 회차: ${nextMyEp}화`);
+      }
+    } else {
+      const nextTotalEp = Math.max(0, (work.episode || 0) + delta);
+      const { error } = await supabase
+        .from('works')
+        .update({ 
+          episode: nextTotalEp, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', work.id);
+
+      if (!error) {
+        fetchAllWorks();
+        showToast(`📖 '${work.title}' 전체 회차: ${nextTotalEp}화`);
+      }
+    }
+  };
+
+  // 3. 터치 스와이프 제어 (터치 시작)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length > 0) {
+      touchStartXRef.current = e.touches[0].clientX;
+      touchStartYRef.current = e.touches[0].clientY;
+    }
+  };
+
+  // 4. 하단 목록 카드 터치 스와이프 (터치 종료 시 판정)
+  const handleListTouchEnd = async (
+    e: React.TouchEvent, 
+    work: Work, 
+    type: 'TOTAL' | 'MY'
+  ) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+    
+    const touch = e.changedTouches[0];
+    const diffX = touch.clientX - touchStartXRef.current;
+    const diffY = touch.clientY - touchStartYRef.current;
+
+    // 수평 이동거리 30px 이상 & 수직 이동거리보다 길 때만 스와이프 인정
+    if (Math.abs(diffX) > 30 && Math.abs(diffX) > Math.abs(diffY)) {
+      const delta = diffX > 0 ? 1 : -1; // 오른쪽 쓱 (+1), 왼쪽 쓱 (-1)
+
+      if (type === 'MY') {
+        const nextMyEp = Math.max(0, (work.my_episode || 0) + delta);
+        const { error } = await supabase
+          .from('works')
+          .update({ 
+            my_episode: nextMyEp, 
+            has_fire_emoji: false,
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', work.id);
+
+        if (!error) {
+          fetchAllWorks();
+          showToast(`📌 '${work.title}' 본 회차: ${nextMyEp}화`);
+        }
+      } else {
+        const nextTotalEp = Math.max(0, (work.episode || 0) + delta);
+        const { error } = await supabase
+          .from('works')
+          .update({ 
+            episode: nextTotalEp, 
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', work.id);
+
+        if (!error) {
+          fetchAllWorks();
+          showToast(`📖 '${work.title}' 전체 회차: ${nextTotalEp}화`);
+        }
+      }
+    }
+
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+  };
+
+  // -------------------------------------------------------------
 
   const handleTabStart = (pageX: number) => {
     if (!tabsRef.current) return;
@@ -764,36 +906,46 @@ export default function App() {
           </div>
         </section>
 
-        {/* 2 & 3. 회차 및 분류 버튼 선택 */}
+        {/* 2 & 3. 회차 및 분류 버튼 선택 (상단 휠 조작 지원 구역) */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors`}>
           
           <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">최신 회차 (전체)</label>
-              <input
-                type="number"
-                inputMode="numeric"
-                className="w-full p-2.5 border border-slate-300 rounded-xl font-extrabold text-base bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-400"
-                placeholder="최신화"
-                value={episodeInput}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => setEpisodeInput(e.target.value === '' ? '' : Number(e.target.value))}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-amber-800 mb-1 flex items-center gap-1">
-                <Bookmark className="w-3.5 h-3.5 fill-amber-500 text-amber-600" />
-                <span>내가 본 회차 (북마크)</span>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                <span>최신 회차 (전체)</span>
+                <span className="text-[10px] text-slate-400 font-normal">🖱️ 휠 조절</span>
               </label>
               <input
                 type="number"
                 inputMode="numeric"
-                className="w-full p-2.5 border border-amber-400 bg-amber-50/70 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-amber-400"
+                onWheel={(e) => handleInputWheel(e, 'TOTAL')}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-extrabold text-base bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-400 transition-all cursor-ns-resize"
+                placeholder="최신화"
+                value={episodeInput}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setEpisodeInput(e.target.value === '' ? '' : Number(e.target.value))}
+                title="마우스 휠을 굴려 회차를 +1 / -1 조절할 수 있습니다."
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-amber-800 mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <Bookmark className="w-3.5 h-3.5 fill-amber-500 text-amber-600" />
+                  <span>내가 본 회차 (북마크)</span>
+                </span>
+                <span className="text-[10px] text-amber-600/70 font-normal">🖱️ 휠 조절</span>
+              </label>
+              <input
+                type="number"
+                inputMode="numeric"
+                onWheel={(e) => handleInputWheel(e, 'MY')}
+                className="w-full p-2.5 border border-amber-400 bg-amber-50/70 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-amber-400 transition-all cursor-ns-resize"
                 placeholder="보던 위치"
                 value={myEpisodeInput}
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => setMyEpisodeInput(e.target.value === '' ? '' : Number(e.target.value))}
+                title="마우스 휠을 굴려 회차를 +1 / -1 조절할 수 있습니다."
               />
             </div>
           </div>
@@ -893,7 +1045,7 @@ export default function App() {
           </section>
         )}
 
-        {/* 📚 모바일/PC 슬림 카드 높이가 적용된 목록 상자 */}
+        {/* 📚 목록 상자 (하단 휠/터치 스와이프 직관 조작 적용) */}
         <section 
           ref={cardBoxRef}
           style={position ? {
@@ -980,7 +1132,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 슬림해진 패딩과 최소 높이가 반영된 카드 목록 */}
+          {/* 📋 하단 카드 목록 (각 회차별 독립 휠/스와이프 자동저장 적용) */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1012,17 +1164,40 @@ export default function App() {
                       <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hidden sm:inline" />
                     </div>
 
-                    {/* 📌 오른쪽: 2층 슬림 컴팩트 정돈 (w-[140px] 너비 고정) */}
+                    {/* 📌 오른쪽: 2층 세로 구조 정돈 (w-[140px] 너비 고정) */}
                     <div className="flex flex-col items-end gap-0.5 shrink-0 whitespace-nowrap my-auto">
-                      {/* 1층: 회차 박스 */}
-                      <div className={`border px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[140px] justify-between ${getEpisodeBoxStyle(myEp, totalEp)}`}>
-                        <span className={`font-extrabold truncate ${isError ? 'text-rose-700' : 'text-amber-600'}`}>
-                          📌{myEp}
-                        </span>
-                        <span className="text-slate-300 font-normal">/</span>
-                        <span className="truncate">
-                          {totalEp}화
-                        </span>
+                      
+                      {/* 1층: 회차 박스 (좌: 본회차 / 우: 전체회차 각각 휠 & 스와이프 반응) */}
+                      <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[140px] justify-between overflow-hidden ${getEpisodeBoxStyle(myEp, totalEp)}`}>
+                        
+                        {/* 👈 좌측: 내가 본 회차 (휠/스와이프 조작 구역) */}
+                        <div 
+                          onWheel={(e) => handleListWheel(e, work, 'MY')}
+                          onTouchStart={handleTouchStart}
+                          onTouchEnd={(e) => handleListTouchEnd(e, work, 'MY')}
+                          className="px-1.5 py-0.5 hover:bg-amber-100/60 active:bg-amber-200/80 transition-colors cursor-ns-resize flex-1 text-left"
+                          title="마우스 휠(위/아래) 또는 터치 스와이프(좌/우)로 본 회차 +1 / -1"
+                        >
+                          <span className={`font-extrabold truncate ${isError ? 'text-rose-700' : 'text-amber-600'}`}>
+                            📌{myEp}
+                          </span>
+                        </div>
+
+                        <span className="text-slate-300 font-normal shrink-0">/</span>
+
+                        {/* 👉 우측: 전체 회차 (휠/스와이프 조작 구역) */}
+                        <div 
+                          onWheel={(e) => handleListWheel(e, work, 'TOTAL')}
+                          onTouchStart={handleTouchStart}
+                          onTouchEnd={(e) => handleListTouchEnd(e, work, 'TOTAL')}
+                          className="px-1.5 py-0.5 hover:bg-slate-200/60 active:bg-slate-300/80 transition-colors cursor-ns-resize flex-1 text-right"
+                          title="마우스 휠(위/아래) 또는 터치 스와이프(좌/우)로 전체 회차 +1 / -1"
+                        >
+                          <span className="truncate">
+                            {totalEp}화
+                          </span>
+                        </div>
+
                       </div>
                       
                       {/* 2층: +1 버튼 + 상태 태그 */}
@@ -1110,7 +1285,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* 📋 클립보드 복사 알림 토스트 팝업 */}
+      {/* 📋 토스트 팝업 (실시간 회차 변동 및 복사 완료 알림) */}
       {toastMessage && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xl z-50 flex items-center gap-2 backdrop-blur-sm border border-slate-700 animate-fade-in">
           <Check className="w-4 h-4 text-emerald-400" />
