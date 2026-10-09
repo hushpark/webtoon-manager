@@ -105,9 +105,7 @@ export default function App() {
   const scrollLeftRef = useRef(0);
   const hasMovedRef = useRef(false);
 
-  // 휠 조작 민감도 제어를 위한 Debounce 타임스탬프
   const lastWheelTimeRef = useRef<number>(0);
-  // 터치 스와이프 제어 좌표
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
 
@@ -493,18 +491,13 @@ export default function App() {
     }
   };
 
-  // -------------------------------------------------------------
-  // 🔄 휠 / 터치 스와이프 조작 관련 핵심 핸들러
-  // -------------------------------------------------------------
-
-  // 1. 상단 입력창 휠 조작 (수동 저장)
   const handleInputWheel = (
     e: React.WheelEvent, 
     type: 'TOTAL' | 'MY'
   ) => {
     e.preventDefault();
     const now = Date.now();
-    if (now - lastWheelTimeRef.current < 150) return; // Debounce 150ms
+    if (now - lastWheelTimeRef.current < 150) return;
     lastWheelTimeRef.current = now;
 
     const delta = e.deltaY < 0 ? 1 : -1;
@@ -516,7 +509,6 @@ export default function App() {
     }
   };
 
-  // 2. 하단 목록 카드 회차 휠 조작 (즉시 DB 자동 저장)
   const handleListWheel = async (
     e: React.WheelEvent, 
     work: Work, 
@@ -526,7 +518,7 @@ export default function App() {
     e.stopPropagation();
 
     const now = Date.now();
-    if (now - lastWheelTimeRef.current < 200) return; // Debounce 200ms
+    if (now - lastWheelTimeRef.current < 200) return;
     lastWheelTimeRef.current = now;
 
     const delta = e.deltaY < 0 ? 1 : -1;
@@ -563,7 +555,6 @@ export default function App() {
     }
   };
 
-  // 3. 터치 스와이프 제어 (터치 시작)
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length > 0) {
       touchStartXRef.current = e.touches[0].clientX;
@@ -571,7 +562,6 @@ export default function App() {
     }
   };
 
-  // 4. 하단 목록 카드 터치 스와이프 (터치 종료 시 판정)
   const handleListTouchEnd = async (
     e: React.TouchEvent, 
     work: Work, 
@@ -583,9 +573,8 @@ export default function App() {
     const diffX = touch.clientX - touchStartXRef.current;
     const diffY = touch.clientY - touchStartYRef.current;
 
-    // 수평 이동거리 30px 이상 & 수직 이동거리보다 길 때만 스와이프 인정
     if (Math.abs(diffX) > 30 && Math.abs(diffX) > Math.abs(diffY)) {
-      const delta = diffX > 0 ? 1 : -1; // 오른쪽 쓱 (+1), 왼쪽 쓱 (-1)
+      const delta = diffX > 0 ? 1 : -1;
 
       if (type === 'MY') {
         const nextMyEp = Math.max(0, (work.my_episode || 0) + delta);
@@ -622,8 +611,6 @@ export default function App() {
     touchStartXRef.current = null;
     touchStartYRef.current = null;
   };
-
-  // -------------------------------------------------------------
 
   const handleTabStart = (pageX: number) => {
     if (!tabsRef.current) return;
@@ -906,20 +893,20 @@ export default function App() {
           </div>
         </section>
 
-        {/* 2 & 3. 회차 및 분류 버튼 선택 (상단 휠 조작 지원 구역) */}
-        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors`}>
+        {/* 2 & 3. 회차 및 분류 버튼 선택 */}
+        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors`}>
           
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+              <label className="text-[11px] sm:text-xs font-bold text-slate-700 mb-1 flex items-center justify-between whitespace-nowrap">
                 <span>최신 회차 (전체)</span>
-                <span className="text-[10px] text-slate-400 font-normal">🖱️ 휠 조절</span>
+                <span className="text-[9px] sm:text-[10px] text-slate-400 font-normal hidden sm:inline">🖱️ 휠 조절</span>
               </label>
               <input
                 type="number"
                 inputMode="numeric"
                 onWheel={(e) => handleInputWheel(e, 'TOTAL')}
-                className="w-full p-2.5 border border-slate-300 rounded-xl font-extrabold text-base bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-400 transition-all cursor-ns-resize"
+                className="w-full p-2 sm:p-2.5 border border-slate-300 rounded-xl font-extrabold text-base bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-400 transition-all cursor-ns-resize"
                 placeholder="최신화"
                 value={episodeInput}
                 onFocus={(e) => e.target.select()}
@@ -929,18 +916,18 @@ export default function App() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-amber-800 mb-1 flex items-center justify-between">
+              <label className="text-[11px] sm:text-xs font-bold text-amber-800 mb-1 flex items-center justify-between whitespace-nowrap">
                 <span className="flex items-center gap-1">
-                  <Bookmark className="w-3.5 h-3.5 fill-amber-500 text-amber-600" />
-                  <span>내가 본 회차 (북마크)</span>
+                  <Bookmark className="w-3.5 h-3.5 fill-amber-500 text-amber-600 shrink-0" />
+                  <span>내가 본 회차</span>
                 </span>
-                <span className="text-[10px] text-amber-600/70 font-normal">🖱️ 휠 조절</span>
+                <span className="text-[9px] sm:text-[10px] text-amber-600/70 font-normal hidden sm:inline">🖱️ 휠 조절</span>
               </label>
               <input
                 type="number"
                 inputMode="numeric"
                 onWheel={(e) => handleInputWheel(e, 'MY')}
-                className="w-full p-2.5 border border-amber-400 bg-amber-50/70 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-amber-400 transition-all cursor-ns-resize"
+                className="w-full p-2 sm:p-2.5 border border-amber-400 bg-amber-50/70 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-amber-400 transition-all cursor-ns-resize"
                 placeholder="보던 위치"
                 value={myEpisodeInput}
                 onFocus={(e) => e.target.select()}
@@ -1045,7 +1032,7 @@ export default function App() {
           </section>
         )}
 
-        {/* 📚 목록 상자 (하단 휠/터치 스와이프 직관 조작 적용) */}
+        {/* 📚 목록 상자 (드롭다운 옵션명 축소 적용) */}
         <section 
           ref={cardBoxRef}
           style={position ? {
@@ -1056,9 +1043,9 @@ export default function App() {
             maxWidth: '576px',
             zIndex: 50
           } : {}}
-          className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-xl space-y-3 transition-colors`}
+          className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3 sm:p-4 shadow-xl space-y-3 transition-colors`}
         >
-          {/* 상단 드래그 헤더 */}
+          {/* 상단 드래그 헤더 (모바일 컴팩트 한 줄 유지) */}
           <div 
             onMouseDown={(e) => startDraggingBox(e.clientX, e.clientY, e.target as HTMLElement)}
             onTouchStart={(e) => {
@@ -1066,33 +1053,34 @@ export default function App() {
                 startDraggingBox(e.touches[0].clientX, e.touches[0].clientY, e.target as HTMLElement);
               }
             }}
-            className="flex items-center justify-between text-xs font-bold text-slate-700 cursor-move select-none p-1.5 -m-1.5 rounded-t-xl hover:bg-slate-50 transition-colors group touch-none"
+            className="flex items-center justify-between text-xs font-bold text-slate-700 cursor-move select-none p-1 -m-1 rounded-t-xl hover:bg-slate-50 transition-colors group touch-none gap-1"
             title="손가락/마우스로 잡고 끌면 원하는 위치로 이동합니다."
           >
-            <span className="flex items-center gap-2">
-              <Move className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
-              <Layers className={`w-4 h-4 ${themeStyles.accentText}`} />
-              <span>전체 작품 목록 ({filteredAndSortedWorks.length})</span>
+            <span className="flex items-center gap-1 shrink-0 whitespace-nowrap text-[11px] sm:text-xs">
+              <Move className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 transition-colors hidden sm:inline" />
+              <Layers className={`w-3.5 h-3.5 ${themeStyles.accentText}`} />
+              <span>전체 목록 ({filteredAndSortedWorks.length})</span>
             </span>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 shrink-0">
+              {/* 🎯 축소된 드롭다운 옵션 텍스트 적용 */}
               <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value as SortOption)}
-                className="bg-slate-50 border border-slate-200 text-slate-600 text-xs rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer font-bold"
+                className="bg-slate-50 border border-slate-200 text-slate-600 text-[11px] sm:text-xs rounded-lg px-1.5 sm:px-2 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer font-bold"
               >
                 <option value="title_asc">이름 (ㄱ-ㅎ)</option>
                 <option value="title_desc">이름 (ㅎ-ㄱ)</option>
                 <option value="ep_desc">전체회차 높은순</option>
                 <option value="ep_asc">전체회차 낮은순</option>
-                <option value="err_my_gt_total">🚨 오류 (본 회차 초과)</option>
-                <option value="diff_my_lt_total">📖 볼 회차 남음 (본 회차 미만)</option>
+                <option value="err_my_gt_total">🚨 본 회차 초과</option>
+                <option value="diff_my_lt_total">📖 본 회차 미만</option>
               </select>
 
               {position && (
                 <button
                   onClick={() => setPosition(null)}
-                  className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-md transition-all"
+                  className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-md transition-all shrink-0"
                   title="기본 중앙 위치로 복원"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -1112,7 +1100,7 @@ export default function App() {
             onTouchMove={(e) => e.touches.length > 0 && handleTabMove(e.touches[0].pageX)}
             onTouchEnd={handleTabEnd}
             onWheel={handleTabWheel}
-            className="flex gap-1.5 overflow-x-auto pb-2.5 bg-slate-100 p-1.5 rounded-xl text-xs font-bold cursor-grab active:cursor-grabbing select-none"
+            className="flex gap-1.5 overflow-x-auto pb-2 bg-slate-100 p-1.5 rounded-xl text-xs font-bold cursor-grab active:cursor-grabbing select-none"
           >
             {STATUS_TABS.map((tab) => {
               const isActive = activeTab === tab.id;
@@ -1132,7 +1120,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 (각 회차별 독립 휠/스와이프 자동저장 적용) */}
+          {/* 📋 하단 카드 목록 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1153,7 +1141,7 @@ export default function App() {
                     key={work.id}
                     onClick={() => handleSelectSuggestion(work)}
                     className="p-1.5 sm:p-2 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2 shadow-2xs min-h-[48px]"
-                    title="클릭 시 선택 및 제목이 복사됩니다."
+                    title="클릭 시 선택 및 제목이 복사되었습니다."
                   >
                     {/* 📌 왼쪽: 제목 영역 */}
                     <div className="flex items-center gap-1.5 min-w-0 flex-1 my-auto pr-1">
@@ -1167,10 +1155,10 @@ export default function App() {
                     {/* 📌 오른쪽: 2층 세로 구조 정돈 (w-[140px] 너비 고정) */}
                     <div className="flex flex-col items-end gap-0.5 shrink-0 whitespace-nowrap my-auto">
                       
-                      {/* 1층: 회차 박스 (좌: 본회차 / 우: 전체회차 각각 휠 & 스와이프 반응) */}
+                      {/* 1층: 회차 박스 */}
                       <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[140px] justify-between overflow-hidden ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                         
-                        {/* 👈 좌측: 내가 본 회차 (휠/스와이프 조작 구역) */}
+                        {/* 👈 좌측: 내가 본 회차 */}
                         <div 
                           onWheel={(e) => handleListWheel(e, work, 'MY')}
                           onTouchStart={handleTouchStart}
@@ -1185,7 +1173,7 @@ export default function App() {
 
                         <span className="text-slate-300 font-normal shrink-0">/</span>
 
-                        {/* 👉 우측: 전체 회차 (휠/스와이프 조작 구역) */}
+                        {/* 👉 우측: 전체 회차 */}
                         <div 
                           onWheel={(e) => handleListWheel(e, work, 'TOTAL')}
                           onTouchStart={handleTouchStart}
@@ -1285,7 +1273,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* 📋 토스트 팝업 (실시간 회차 변동 및 복사 완료 알림) */}
+      {/* 📋 토스트 팝업 */}
       {toastMessage && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xl z-50 flex items-center gap-2 backdrop-blur-sm border border-slate-700 animate-fade-in">
           <Check className="w-4 h-4 text-emerald-400" />
