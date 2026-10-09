@@ -771,11 +771,11 @@ export default function App() {
       {/* 메인 컨테이너 */}
       <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1 flex flex-col items-stretch">
         
-        {/* 1. 작품 검색 입력 */}
+        {/* 1. 작품 검색 입력 (1. 번호 및 불필요 문구 제거) */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative`}>
           <div className="flex justify-between items-center">
             <label className={`text-xs font-bold uppercase tracking-wider ${themeStyles.accentText}`}>
-              1. 작품 제목 입력
+              작품 제목 입력
             </label>
             <span className="text-[11px] text-slate-400">타이핑 시 자동완성</span>
           </div>
@@ -847,15 +847,15 @@ export default function App() {
             )}
 
             {!loading && searchState.type === 'IDLE' && (
-              <div className="flex items-center justify-center gap-1.5 text-xs text-slate-500 py-0.5 flex-wrap">
-                <span>제목을 입력하세요.</span>
-                <span className="text-slate-300">|</span>
+              <div className="flex items-center justify-center gap-2 text-xs text-slate-500 py-0.5 flex-wrap font-medium">
                 <span className="inline-flex items-center gap-1">
                   신규: <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono font-bold text-slate-700">Alt+1</kbd>
                 </span>
+                <span className="text-slate-300">|</span>
                 <span className="inline-flex items-center gap-1">
                   수정: <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono font-bold text-slate-700">Alt+2</kbd>
                 </span>
+                <span className="text-slate-300">|</span>
                 <span className="inline-flex items-center gap-1">
                   초기화: <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono font-bold text-slate-700">Esc</kbd>
                 </span>
@@ -1032,7 +1032,7 @@ export default function App() {
           </section>
         )}
 
-        {/* 📚 목록 상자 (드롭다운 옵션명 축소 적용) */}
+        {/* 📚 목록 상자 */}
         <section 
           ref={cardBoxRef}
           style={position ? {
@@ -1045,7 +1045,7 @@ export default function App() {
           } : {}}
           className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3 sm:p-4 shadow-xl space-y-3 transition-colors`}
         >
-          {/* 상단 드래그 헤더 (모바일 컴팩트 한 줄 유지) */}
+          {/* 상단 드래그 헤더 */}
           <div 
             onMouseDown={(e) => startDraggingBox(e.clientX, e.clientY, e.target as HTMLElement)}
             onTouchStart={(e) => {
@@ -1063,7 +1063,6 @@ export default function App() {
             </span>
 
             <div className="flex items-center gap-1 shrink-0">
-              {/* 🎯 축소된 드롭다운 옵션 텍스트 적용 */}
               <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value as SortOption)}
