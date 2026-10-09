@@ -771,7 +771,7 @@ export default function App() {
       {/* 메인 컨테이너 */}
       <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1 flex flex-col items-stretch">
         
-        {/* 1. 작품 검색 입력 (1. 번호 및 불필요 문구 제거) */}
+        {/* 1. 작품 검색 입력 */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative`}>
           <div className="flex justify-between items-center">
             <label className={`text-xs font-bold uppercase tracking-wider ${themeStyles.accentText}`}>
@@ -1119,7 +1119,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 */}
+          {/* 📋 하단 카드 목록 (제목 폰트 text-sm 14px 전면 적용) */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1142,10 +1142,10 @@ export default function App() {
                     className="p-1.5 sm:p-2 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2 shadow-2xs min-h-[48px]"
                     title="클릭 시 선택 및 제목이 복사되었습니다."
                   >
-                    {/* 📌 왼쪽: 제목 영역 */}
+                    {/* 📌 왼쪽: 제목 영역 (text-sm으로 시원하게 변경) */}
                     <div className="flex items-center gap-1.5 min-w-0 flex-1 my-auto pr-1">
                       {showFire && <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20 shrink-0" />}
-                      <span className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-indigo-600 leading-tight line-clamp-2">
+                      <span className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 leading-tight line-clamp-2">
                         {work.title}
                       </span>
                       <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hidden sm:inline" />
