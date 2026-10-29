@@ -823,7 +823,7 @@ export default function App() {
 
                       <div className="flex items-center gap-1 shrink-0">
                         <div className={`border px-2 py-0.5 rounded text-[11px] font-bold font-mono tabular-nums flex items-center w-[115px] ${getEpisodeBoxStyle(myEp, totalEp)}`}>
-                          <span className={`w-12 text-right font-black ${myEp > totalEp ? 'text-rose-700' : 'text-amber-900'}`}>📌{myEp}</span>
+                          <span className={`w-12 text-right font-black ${myEp > totalEp ? 'text-rose-700' : 'text-amber-900'}`}>📌 {myEp}</span>
                           <span className="w-3 text-center text-slate-300 font-normal">/</span>
                           <span className="w-12 text-right text-slate-800">{totalEp}화</span>
                         </div>
@@ -1166,7 +1166,7 @@ export default function App() {
                           title="마우스 휠(위/아래) 또는 터치 스와이프(좌/우)로 본 회차 +1 / -1"
                         >
                           <span className={`font-black truncate ${isError ? 'text-rose-700' : 'text-amber-900'}`}>
-                            📌{myEp}
+                            📌 {myEp}
                           </span>
                         </div>
 
