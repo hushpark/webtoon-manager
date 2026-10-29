@@ -823,9 +823,9 @@ export default function App() {
 
                       <div className="flex items-center gap-1 shrink-0">
                         <div className={`border px-2 py-0.5 rounded text-[11px] font-bold font-mono tabular-nums flex items-center w-[115px] ${getEpisodeBoxStyle(myEp, totalEp)}`}>
-                          <span className={`w-12 text-right font-extrabold ${myEp > totalEp ? 'text-rose-700' : 'text-amber-600'}`}>📌{myEp}</span>
+                          <span className={`w-12 text-right font-black ${myEp > totalEp ? 'text-rose-700' : 'text-amber-900'}`}>📌{myEp}</span>
                           <span className="w-3 text-center text-slate-300 font-normal">/</span>
-                          <span className="w-12 text-right">{totalEp}화</span>
+                          <span className="w-12 text-right text-slate-800">{totalEp}화</span>
                         </div>
 
                         <span className="w-16 text-center text-[10px] bg-slate-100 text-slate-700 px-1 py-0.5 rounded font-bold border border-slate-200 truncate whitespace-nowrap">
@@ -916,18 +916,18 @@ export default function App() {
             </div>
 
             <div>
-              <label className="text-[11px] sm:text-xs font-bold text-amber-800 mb-1 flex items-center justify-between whitespace-nowrap">
+              <label className="text-[11px] sm:text-xs font-bold text-amber-900 mb-1 flex items-center justify-between whitespace-nowrap">
                 <span className="flex items-center gap-1">
                   <Bookmark className="w-3.5 h-3.5 fill-amber-500 text-amber-600 shrink-0" />
                   <span>내가 본 회차</span>
                 </span>
-                <span className="text-[9px] sm:text-[10px] text-amber-600/70 font-normal hidden sm:inline">🖱️ 휠 조절</span>
+                <span className="text-[9px] sm:text-[10px] text-amber-700 font-normal hidden sm:inline">🖱️ 휠 조절</span>
               </label>
               <input
                 type="number"
                 inputMode="numeric"
                 onWheel={(e) => handleInputWheel(e, 'MY')}
-                className="w-full p-2 sm:p-2.5 border border-amber-400 bg-amber-50/70 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder-amber-400 transition-all cursor-ns-resize"
+                className="w-full p-2 sm:p-2.5 border border-amber-500 bg-amber-50/90 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-600 placeholder-amber-400 transition-all cursor-ns-resize"
                 placeholder="보던 위치"
                 value={myEpisodeInput}
                 onFocus={(e) => e.target.select()}
@@ -1119,7 +1119,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 (제목 폰트 text-sm 14px 전면 적용) */}
+          {/* 📋 하단 카드 목록 (📌내가 본 회차 또렷한 text-amber-900 및 font-black 적용) */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1142,7 +1142,7 @@ export default function App() {
                     className="p-1.5 sm:p-2 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2 shadow-2xs min-h-[48px]"
                     title="클릭 시 선택 및 제목이 복사되었습니다."
                   >
-                    {/* 📌 왼쪽: 제목 영역 (text-sm으로 시원하게 변경) */}
+                    {/* 📌 왼쪽: 제목 영역 (14px) */}
                     <div className="flex items-center gap-1.5 min-w-0 flex-1 my-auto pr-1">
                       {showFire && <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20 shrink-0" />}
                       <span className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 leading-tight line-clamp-2">
@@ -1157,15 +1157,15 @@ export default function App() {
                       {/* 1층: 회차 박스 */}
                       <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[140px] justify-between overflow-hidden ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                         
-                        {/* 👈 좌측: 내가 본 회차 */}
+                        {/* 👈 좌측: 내가 본 회차 (시인성 극대화 반영) */}
                         <div 
                           onWheel={(e) => handleListWheel(e, work, 'MY')}
                           onTouchStart={handleTouchStart}
                           onTouchEnd={(e) => handleListTouchEnd(e, work, 'MY')}
-                          className="px-1.5 py-0.5 hover:bg-amber-100/60 active:bg-amber-200/80 transition-colors cursor-ns-resize flex-1 text-left"
+                          className="px-1.5 py-0.5 bg-amber-50/50 hover:bg-amber-100/80 active:bg-amber-200/90 transition-colors cursor-ns-resize flex-1 text-left"
                           title="마우스 휠(위/아래) 또는 터치 스와이프(좌/우)로 본 회차 +1 / -1"
                         >
-                          <span className={`font-extrabold truncate ${isError ? 'text-rose-700' : 'text-amber-600'}`}>
+                          <span className={`font-black truncate ${isError ? 'text-rose-700' : 'text-amber-900'}`}>
                             📌{myEp}
                           </span>
                         </div>
@@ -1180,7 +1180,7 @@ export default function App() {
                           className="px-1.5 py-0.5 hover:bg-slate-200/60 active:bg-slate-300/80 transition-colors cursor-ns-resize flex-1 text-right"
                           title="마우스 휠(위/아래) 또는 터치 스와이프(좌/우)로 전체 회차 +1 / -1"
                         >
-                          <span className="truncate">
+                          <span className="truncate text-slate-800 font-extrabold">
                             {totalEp}화
                           </span>
                         </div>
