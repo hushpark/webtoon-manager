@@ -1224,11 +1224,11 @@ export default function App() {
 
       </main>
 
-      {/* 🚀 중앙 콘텐츠 밀착형 플로팅 액션 버튼 (조건 충족 시에만 선명하게 노출) */}
+      {/* 🚀 중앙 콘텐츠 밀착형 플로팅 액션 버튼 (조건 충족 시에만 노출 / 높이 상향 및 모바일 텍스트 숨김) */}
       {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
         <aside 
           aria-label="빠른 실행 메뉴"
-          className="fixed left-1/2 -translate-x-1/2 w-full max-w-xl pointer-events-none z-40 bottom-[35%]"
+          className="fixed left-1/2 -translate-x-1/2 w-full max-w-xl pointer-events-none z-40 bottom-[44%]"
         >
           <div className="flex flex-col items-end gap-2.5 pr-2 sm:pr-0 sm:translate-x-[68px] pointer-events-auto">
             {/* 1. 신규 등록 버튼 (미등록 신규 작품 입력 시) */}
@@ -1236,11 +1236,11 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleRegister}
-                className={`flex items-center gap-1.5 px-3.5 py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.secondaryBtn} text-white border-emerald-400/50 shadow-emerald-500/40`}
+                className={`flex items-center gap-1.5 p-3 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.secondaryBtn} text-white border-emerald-400/50 shadow-emerald-500/40`}
                 title="신규 등록 (Alt+1)"
               >
                 <PlusCircle className="w-5 h-5 shrink-0" />
-                <span className="text-xs">신규 등록</span>
+                <span className="hidden sm:inline">신규 등록</span>
               </button>
             )}
 
@@ -1249,24 +1249,24 @@ export default function App() {
               <button
                 type="button"
                 onClick={handleMoveOrUpdate}
-                className={`flex items-center gap-1.5 px-3.5 py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.primaryBtn} text-white border-indigo-400/50 shadow-indigo-500/40`}
+                className={`flex items-center gap-1.5 p-3 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.primaryBtn} text-white border-indigo-400/50 shadow-indigo-500/40`}
                 title="이동 / 수정 (Alt+2)"
               >
                 <ArrowRightLeft className="w-5 h-5 shrink-0" />
-                <span className="text-xs">이동/수정</span>
+                <span className="hidden sm:inline">이동/수정</span>
               </button>
             )}
 
-            {/* 3. 삭제 버튼 (등록된 작품 선택 시) */}
+            {/* 3. 삭제 버튼 (등록된 작품 선택 시, 가장 아래쪽에 위치) */}
             {searchState.type === 'EXACT_MATCH' && (
               <button
                 type="button"
                 onClick={handleDeleteWork}
-                className="flex items-center gap-1.5 px-3.5 py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border bg-rose-600 hover:bg-rose-700 text-white border-rose-400/50 shadow-rose-500/40"
+                className="flex items-center gap-1.5 p-3 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border bg-rose-600 hover:bg-rose-700 text-white border-rose-400/50 shadow-rose-500/40"
                 title="데이터베이스에서 완전히 삭제"
               >
                 <Trash2 className="w-5 h-5 shrink-0" />
-                <span className="text-xs">삭제</span>
+                <span className="hidden sm:inline">삭제</span>
               </button>
             )}
           </div>
