@@ -7,7 +7,6 @@ import {
   PlusCircle, 
   ArrowRightLeft, 
   RotateCcw, 
-  Lock, 
   BookOpen, 
   AlertCircle, 
   Clock, 
@@ -729,7 +728,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-28 transition-colors duration-300 flex flex-col items-center`}>
+    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-10 transition-colors duration-300 flex flex-col items-center`}>
       
       {/* 상단 헤더 */}
       <header className="w-full sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-xs">
@@ -1119,7 +1118,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 (📌내가 본 회차 또렷한 text-amber-900 및 font-black 적용) */}
+          {/* 📋 하단 카드 목록 (제목 폰트 text-sm 14px 전면 적용) */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1142,7 +1141,7 @@ export default function App() {
                     className="p-1.5 sm:p-2 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2 shadow-2xs min-h-[48px]"
                     title="클릭 시 선택 및 제목이 복사되었습니다."
                   >
-                    {/* 📌 왼쪽: 제목 영역 (14px) */}
+                    {/* 📌 왼쪽: 제목 영역 (text-sm으로 시원하게 변경) */}
                     <div className="flex items-center gap-1.5 min-w-0 flex-1 my-auto pr-1">
                       {showFire && <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20 shrink-0" />}
                       <span className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 leading-tight line-clamp-2">
@@ -1157,7 +1156,7 @@ export default function App() {
                       {/* 1층: 회차 박스 */}
                       <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[140px] justify-between overflow-hidden ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                         
-                        {/* 👈 좌측: 내가 본 회차 (시인성 극대화 반영) */}
+                        {/* 👈 좌측: 내가 본 회차 (📌 공백 및 진한 색상 적용) */}
                         <div 
                           onWheel={(e) => handleListWheel(e, work, 'MY')}
                           onTouchStart={handleTouchStart}
@@ -1225,52 +1224,56 @@ export default function App() {
 
       </main>
 
-      {/* 하단 고정 액션 버튼 바 */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-3.5 sm:px-6 py-3 flex justify-center">
-        <div className="w-full max-w-xl flex gap-2">
-          <button
-            onClick={handleRegister}
-            disabled={searchState.type !== 'NEW_WORK'}
-            className={`flex-1 py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
-              searchState.type === 'NEW_WORK'
-                ? `${themeStyles.secondaryBtn} text-white active:scale-95`
-                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
-            }`}
-          >
-            {searchState.type !== 'NEW_WORK' ? <Lock className="w-4 h-4 text-slate-400" /> : <PlusCircle className="w-4 h-4" />}
-            <span>신규 등록</span>
-            <span className="text-[11px] opacity-80 font-mono font-normal hidden sm:inline">(Alt+1)</span>
-          </button>
+      {/* 🚀 우측 플로팅 액션 버튼 (세로 정렬, 스크롤 고정) */}
+      <aside 
+        aria-label="빠른 실행 메뉴"
+        className="fixed right-3.5 bottom-6 z-40 flex flex-col items-end gap-2.5"
+      >
+        {/* 1. 신규 등록 버튼 (Alt+1) */}
+        <button
+          type="button"
+          onClick={handleRegister}
+          disabled={searchState.type !== 'NEW_WORK'}
+          className={`flex items-center gap-1.5 px-3 py-3 rounded-2xl font-bold text-xs shadow-xl backdrop-blur-md transition-all active:scale-95 border ${
+            searchState.type === 'NEW_WORK'
+              ? `${themeStyles.secondaryBtn} text-white border-emerald-400/50 shadow-emerald-500/30 scale-105`
+              : 'bg-white/80 text-slate-300 border-slate-200 cursor-not-allowed opacity-40 shadow-none'
+          }`}
+          title="신규 등록 (Alt+1)"
+        >
+          <PlusCircle className="w-5 h-5 shrink-0" />
+          <span className="hidden sm:inline">신규 등록</span>
+        </button>
 
-          <button
-            onClick={handleMoveOrUpdate}
-            disabled={searchState.type !== 'EXACT_MATCH'}
-            className={`flex-1 py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
-              searchState.type === 'EXACT_MATCH'
-                ? `${themeStyles.primaryBtn} text-white active:scale-95`
-                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
-            }`}
-          >
-            {searchState.type !== 'EXACT_MATCH' ? <Lock className="w-4 h-4 text-slate-400" /> : <ArrowRightLeft className="w-4 h-4" />}
-            <span>이동 / 수정</span>
-            <span className="text-[11px] opacity-80 font-mono font-normal hidden sm:inline">(Alt+2)</span>
-          </button>
+        {/* 2. 이동 / 수정 버튼 (Alt+2) */}
+        <button
+          type="button"
+          onClick={handleMoveOrUpdate}
+          disabled={searchState.type !== 'EXACT_MATCH'}
+          className={`flex items-center gap-1.5 px-3 py-3 rounded-2xl font-bold text-xs shadow-xl backdrop-blur-md transition-all active:scale-95 border ${
+            searchState.type === 'EXACT_MATCH'
+              ? `${themeStyles.primaryBtn} text-white border-indigo-400/50 shadow-indigo-500/30 scale-105`
+              : 'bg-white/80 text-slate-300 border-slate-200 cursor-not-allowed opacity-40 shadow-none'
+          }`}
+          title="이동 / 수정 (Alt+2)"
+        >
+          <ArrowRightLeft className="w-5 h-5 shrink-0" />
+          <span className="hidden sm:inline">이동/수정</span>
+        </button>
 
+        {/* 3. 작품 삭제 버튼 (검색 일치 상태에서만 노출) */}
+        {searchState.type === 'EXACT_MATCH' && (
           <button
+            type="button"
             onClick={handleDeleteWork}
-            disabled={searchState.type !== 'EXACT_MATCH'}
-            className={`py-3.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all shadow-md ${
-              searchState.type === 'EXACT_MATCH'
-                ? 'bg-rose-600 hover:bg-rose-700 text-white active:scale-95'
-                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
-            }`}
+            className="flex items-center gap-1.5 px-3 py-3 rounded-2xl font-bold text-xs shadow-xl backdrop-blur-md transition-all active:scale-95 border bg-rose-600 hover:bg-rose-700 text-white border-rose-400/50 shadow-rose-500/30"
             title="데이터베이스에서 완전히 삭제"
           >
-            <Trash2 className="w-4 h-4" />
-            <span className="hidden sm:inline">작품 삭제</span>
+            <Trash2 className="w-5 h-5 shrink-0" />
+            <span className="hidden sm:inline">삭제</span>
           </button>
-        </div>
-      </div>
+        )}
+      </aside>
 
       {/* 📋 토스트 팝업 */}
       {toastMessage && (
