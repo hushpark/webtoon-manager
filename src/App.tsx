@@ -1228,7 +1228,7 @@ export default function App() {
       {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
         <aside 
           aria-label="빠른 실행 메뉴"
-          className="fixed left-1/2 -translate-x-1/2 w-full max-w-xl pointer-events-none z-40 bottom-[44%]"
+          className="fixed left-1/2 -translate-x-1/2 w-full max-w-xl pointer-events-none z-40 bottom-[46%]"
         >
           <div className="flex flex-col items-end gap-2.5 pr-2 sm:pr-0 sm:translate-x-[68px] pointer-events-auto">
             {/* 1. 신규 등록 버튼 (미등록 신규 작품 입력 시) */}
