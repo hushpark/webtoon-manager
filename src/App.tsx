@@ -728,7 +728,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-10 transition-colors duration-300 flex flex-col items-center`}>
+    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-16 transition-colors duration-300 flex flex-col items-center`}>
       
       {/* 상단 헤더 */}
       <header className="w-full sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-xs">
@@ -1141,7 +1141,7 @@ export default function App() {
                     className="p-1.5 sm:p-2 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2 shadow-2xs min-h-[48px]"
                     title="클릭 시 선택 및 제목이 복사되었습니다."
                   >
-                    {/* 📌 왼쪽: 제목 영역 (text-sm으로 시원하게 변경) */}
+                    {/* 📌 왼쪽: 제목 영역 (text-sm) */}
                     <div className="flex items-center gap-1.5 min-w-0 flex-1 my-auto pr-1">
                       {showFire && <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20 shrink-0" />}
                       <span className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 leading-tight line-clamp-2">
@@ -1224,56 +1224,54 @@ export default function App() {
 
       </main>
 
-      {/* 🚀 우측 플로팅 액션 버튼 (세로 정렬, 스크롤 고정) */}
-      <aside 
-        aria-label="빠른 실행 메뉴"
-        className="fixed right-3.5 bottom-6 z-40 flex flex-col items-end gap-2.5"
-      >
-        {/* 1. 신규 등록 버튼 (Alt+1) */}
-        <button
-          type="button"
-          onClick={handleRegister}
-          disabled={searchState.type !== 'NEW_WORK'}
-          className={`flex items-center gap-1.5 px-3 py-3 rounded-2xl font-bold text-xs shadow-xl backdrop-blur-md transition-all active:scale-95 border ${
-            searchState.type === 'NEW_WORK'
-              ? `${themeStyles.secondaryBtn} text-white border-emerald-400/50 shadow-emerald-500/30 scale-105`
-              : 'bg-white/80 text-slate-300 border-slate-200 cursor-not-allowed opacity-40 shadow-none'
-          }`}
-          title="신규 등록 (Alt+1)"
+      {/* 🚀 중앙 콘텐츠 밀착형 플로팅 액션 버튼 (조건 충족 시에만 선명하게 노출) */}
+      {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
+        <aside 
+          aria-label="빠른 실행 메뉴"
+          className="fixed left-1/2 -translate-x-1/2 w-full max-w-xl pointer-events-none z-40 bottom-[35%]"
         >
-          <PlusCircle className="w-5 h-5 shrink-0" />
-          <span className="hidden sm:inline">신규 등록</span>
-        </button>
+          <div className="flex flex-col items-end gap-2.5 pr-2 sm:pr-0 sm:translate-x-[68px] pointer-events-auto">
+            {/* 1. 신규 등록 버튼 (미등록 신규 작품 입력 시) */}
+            {searchState.type === 'NEW_WORK' && (
+              <button
+                type="button"
+                onClick={handleRegister}
+                className={`flex items-center gap-1.5 px-3.5 py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.secondaryBtn} text-white border-emerald-400/50 shadow-emerald-500/40`}
+                title="신규 등록 (Alt+1)"
+              >
+                <PlusCircle className="w-5 h-5 shrink-0" />
+                <span className="text-xs">신규 등록</span>
+              </button>
+            )}
 
-        {/* 2. 이동 / 수정 버튼 (Alt+2) */}
-        <button
-          type="button"
-          onClick={handleMoveOrUpdate}
-          disabled={searchState.type !== 'EXACT_MATCH'}
-          className={`flex items-center gap-1.5 px-3 py-3 rounded-2xl font-bold text-xs shadow-xl backdrop-blur-md transition-all active:scale-95 border ${
-            searchState.type === 'EXACT_MATCH'
-              ? `${themeStyles.primaryBtn} text-white border-indigo-400/50 shadow-indigo-500/30 scale-105`
-              : 'bg-white/80 text-slate-300 border-slate-200 cursor-not-allowed opacity-40 shadow-none'
-          }`}
-          title="이동 / 수정 (Alt+2)"
-        >
-          <ArrowRightLeft className="w-5 h-5 shrink-0" />
-          <span className="hidden sm:inline">이동/수정</span>
-        </button>
+            {/* 2. 이동 / 수정 버튼 (등록된 작품 선택 시) */}
+            {searchState.type === 'EXACT_MATCH' && (
+              <button
+                type="button"
+                onClick={handleMoveOrUpdate}
+                className={`flex items-center gap-1.5 px-3.5 py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.primaryBtn} text-white border-indigo-400/50 shadow-indigo-500/40`}
+                title="이동 / 수정 (Alt+2)"
+              >
+                <ArrowRightLeft className="w-5 h-5 shrink-0" />
+                <span className="text-xs">이동/수정</span>
+              </button>
+            )}
 
-        {/* 3. 작품 삭제 버튼 (검색 일치 상태에서만 노출) */}
-        {searchState.type === 'EXACT_MATCH' && (
-          <button
-            type="button"
-            onClick={handleDeleteWork}
-            className="flex items-center gap-1.5 px-3 py-3 rounded-2xl font-bold text-xs shadow-xl backdrop-blur-md transition-all active:scale-95 border bg-rose-600 hover:bg-rose-700 text-white border-rose-400/50 shadow-rose-500/30"
-            title="데이터베이스에서 완전히 삭제"
-          >
-            <Trash2 className="w-5 h-5 shrink-0" />
-            <span className="hidden sm:inline">삭제</span>
-          </button>
-        )}
-      </aside>
+            {/* 3. 삭제 버튼 (등록된 작품 선택 시) */}
+            {searchState.type === 'EXACT_MATCH' && (
+              <button
+                type="button"
+                onClick={handleDeleteWork}
+                className="flex items-center gap-1.5 px-3.5 py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border bg-rose-600 hover:bg-rose-700 text-white border-rose-400/50 shadow-rose-500/40"
+                title="데이터베이스에서 완전히 삭제"
+              >
+                <Trash2 className="w-5 h-5 shrink-0" />
+                <span className="text-xs">삭제</span>
+              </button>
+            )}
+          </div>
+        </aside>
+      )}
 
       {/* 📋 토스트 팝업 */}
       {toastMessage && (
