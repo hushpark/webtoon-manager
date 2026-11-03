@@ -484,11 +484,14 @@ export default function App() {
     }
   };
 
+  // 모바일 터치 흐름을 방해하지 않도록 마우스 휠 동작만 제어
   const handleInputWheel = (
     e: React.WheelEvent, 
     type: 'TOTAL' | 'MY'
   ) => {
-    e.preventDefault();
+    if (e.deltaY !== 0) {
+      e.preventDefault();
+    }
     const now = Date.now();
     if (now - lastWheelTimeRef.current < 150) return;
     lastWheelTimeRef.current = now;
@@ -849,7 +852,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* 2 & 3. 회차 및 분류 버튼 선택 */}
+        {/* 2 & 3. 회차 및 분류 버튼 선택 구역 (모바일 터치 완벽 대응) */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors`}>
           
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
@@ -861,13 +864,15 @@ export default function App() {
               <input
                 type="number"
                 inputMode="numeric"
+                pattern="[0-9]*"
                 onWheel={(e) => handleInputWheel(e, 'TOTAL')}
-                className="w-full p-2 sm:p-2.5 border border-slate-300 rounded-xl font-extrabold text-base bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-400 transition-all cursor-ns-resize"
+                onTouchEnd={(e) => (e.target as HTMLInputElement).focus()}
+                className="w-full p-2 sm:p-2.5 border border-slate-300 rounded-xl font-extrabold text-base bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-400 transition-all select-text cursor-text"
                 placeholder="최신화"
                 value={episodeInput}
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => setEpisodeInput(e.target.value === '' ? '' : Number(e.target.value))}
-                title="마우스 휠을 굴려 회차를 +1 / -1 조절할 수 있습니다."
+                title="터치하여 직접 입력하거나 마우스 휠로 조절"
               />
             </div>
 
@@ -882,13 +887,15 @@ export default function App() {
               <input
                 type="number"
                 inputMode="numeric"
+                pattern="[0-9]*"
                 onWheel={(e) => handleInputWheel(e, 'MY')}
-                className="w-full p-2 sm:p-2.5 border border-amber-500 bg-amber-50/90 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-600 placeholder-amber-400 transition-all cursor-ns-resize"
+                onTouchEnd={(e) => (e.target as HTMLInputElement).focus()}
+                className="w-full p-2 sm:p-2.5 border border-amber-500 bg-amber-50/90 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-600 placeholder-amber-400 transition-all select-text cursor-text"
                 placeholder="보던 위치"
                 value={myEpisodeInput}
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => setMyEpisodeInput(e.target.value === '' ? '' : Number(e.target.value))}
-                title="마우스 휠을 굴려 회차를 +1 / -1 조절할 수 있습니다."
+                title="터치하여 직접 입력하거나 마우스 휠로 조절"
               />
             </div>
           </div>
@@ -1075,7 +1082,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 (터치 간섭 제거 완결판) */}
+          {/* 📋 하단 카드 목록 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1110,12 +1117,12 @@ export default function App() {
                     {/* 오른쪽: 회차 및 상태 버튼 (160px 너비) */}
                     <div className="flex flex-col items-end gap-0.5 shrink-0 whitespace-nowrap my-auto">
                       
-                      {/* 1층: 회차 박스 (터치 간섭 제거) */}
+                      {/* 1층: 회차 박스 */}
                       <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[160px] justify-between overflow-hidden select-none pointer-events-none ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                         <div 
                           onWheel={(e) => handleListWheel(e, work, 'MY')}
                           className="px-1.5 py-0.5 bg-amber-50/50 hover:bg-amber-100/80 transition-colors flex-1 text-left pointer-events-auto"
-                          title="마우스 휠로 본 회차 조절 / 터치 시 상단 편집 로드"
+                          title="마우스 휠로 본 회차 조절 / 클릭 시 상단 편집창 로드"
                         >
                           <span className={`font-black truncate ${isError ? 'text-rose-700' : 'text-amber-900'}`}>
                             📌 {myEp}
@@ -1127,7 +1134,7 @@ export default function App() {
                         <div 
                           onWheel={(e) => handleListWheel(e, work, 'TOTAL')}
                           className="px-1.5 py-0.5 hover:bg-slate-200/60 transition-colors flex-1 text-right pointer-events-auto"
-                          title="마우스 휠로 전체 회차 조절 / 터치 시 상단 편집 로드"
+                          title="마우스 휠로 전체 회차 조절 / 클릭 시 상단 편집창 로드"
                         >
                           <span className="truncate text-slate-800 font-extrabold">
                             {totalEp}화
@@ -1135,7 +1142,7 @@ export default function App() {
                         </div>
                       </div>
                       
-                      {/* 2층: +1 버튼 + 상태 태그 (상태 11px, 날짜 10px) */}
+                      {/* 2층: +1 버튼 + 상태 태그 (상태 11px, 날짜 10px로 확대 복원) */}
                       <div className="flex items-center gap-1 w-[160px] justify-end">
                         <button
                           onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
@@ -1188,7 +1195,7 @@ export default function App() {
 
       </main>
 
-      {/* 🚀 중앙 밀착형 플로팅 액션 버튼 */}
+      {/* 🚀 중앙 플로팅 버튼 */}
       {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
         <aside 
           aria-label="빠른 실행 메뉴"
