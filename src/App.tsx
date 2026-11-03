@@ -99,8 +99,6 @@ export default function App() {
   const hasMovedRef = useRef(false);
 
   const lastWheelTimeRef = useRef<number>(0);
-  const touchStartXRef = useRef<number | null>(null);
-  const touchStartYRef = useRef<number | null>(null);
 
   const cleanTitle = (str: string) => str.replace(/\s+/g, '').toLowerCase();
 
@@ -548,68 +546,6 @@ export default function App() {
         showToast(`📖 '${work.title}' 전체 회차: ${nextTotalEp}화`);
       }
     }
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length > 0) {
-      touchStartXRef.current = e.touches[0].clientX;
-      touchStartYRef.current = e.touches[0].clientY;
-    }
-  };
-
-  const handleListTouchEnd = async (
-    e: React.TouchEvent, 
-    work: Work, 
-    type: 'TOTAL' | 'MY'
-  ) => {
-    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
-    
-    const touch = e.changedTouches[0];
-    const diffX = touch.clientX - touchStartXRef.current;
-    const diffY = touch.clientY - touchStartYRef.current;
-
-    // 1. 좌우 25px 이상 스와이프했을 때 회차 조절
-    if (Math.abs(diffX) > 25 && Math.abs(diffX) > Math.abs(diffY)) {
-      const delta = diffX > 0 ? 1 : -1;
-
-      if (type === 'MY') {
-        const nextMyEp = Math.max(0, (work.my_episode || 0) + delta);
-        const { error } = await supabase
-          .from('works')
-          .update({ 
-            my_episode: nextMyEp, 
-            has_fire_emoji: false,
-            updated_at: new Date().toISOString() 
-          })
-          .eq('id', work.id);
-
-        if (!error) {
-          fetchAllWorks();
-          showToast(`📌 '${work.title}' 본 회차: ${nextMyEp}화`);
-        }
-      } else {
-        const nextTotalEp = Math.max(0, (work.episode || 0) + delta);
-        const { error } = await supabase
-          .from('works')
-          .update({ 
-            episode: nextTotalEp, 
-            updated_at: new Date().toISOString() 
-          })
-          .eq('id', work.id);
-
-        if (!error) {
-          fetchAllWorks();
-          showToast(`📖 '${work.title}' 전체 회차: ${nextTotalEp}화`);
-        }
-      }
-    } 
-    // 2. 가볍게 톡 두드린 단순 탭인 경우 -> 모바일 터치 즉시 상단 편집창으로 로드
-    else if (Math.abs(diffX) < 15 && Math.abs(diffY) < 15) {
-      handleSelectSuggestion(work);
-    }
-
-    touchStartXRef.current = null;
-    touchStartYRef.current = null;
   };
 
   const handleTabStart = (pageX: number) => {
@@ -1139,7 +1075,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 */}
+          {/* 📋 하단 카드 목록 (터치 간섭 제거 완결판) */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1160,7 +1096,7 @@ export default function App() {
                     key={work.id}
                     onClick={() => handleSelectSuggestion(work)}
                     className="p-1.5 sm:p-2 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2 shadow-2xs min-h-[48px]"
-                    title="클릭 시 선택 및 제목이 복사되었습니다."
+                    title="클릭 시 상단 편집창으로 로드 및 제목 복사"
                   >
                     {/* 왼쪽: 제목 */}
                     <div className="flex items-center gap-1.5 min-w-0 flex-1 my-auto pr-1">
@@ -1174,18 +1110,12 @@ export default function App() {
                     {/* 오른쪽: 회차 및 상태 버튼 (160px 너비) */}
                     <div className="flex flex-col items-end gap-0.5 shrink-0 whitespace-nowrap my-auto">
                       
-                      {/* 1층: 회차 박스 (터치 시 상단 폼 로드 보장) */}
-                      <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[160px] justify-between overflow-hidden select-none ${getEpisodeBoxStyle(myEp, totalEp)}`}>
+                      {/* 1층: 회차 박스 (터치 간섭 제거) */}
+                      <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[160px] justify-between overflow-hidden select-none pointer-events-none ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                         <div 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelectSuggestion(work);
-                          }}
                           onWheel={(e) => handleListWheel(e, work, 'MY')}
-                          onTouchStart={handleTouchStart}
-                          onTouchEnd={(e) => handleListTouchEnd(e, work, 'MY')}
-                          className="px-1.5 py-0.5 bg-amber-50/50 hover:bg-amber-100/80 active:bg-amber-200/90 transition-colors cursor-pointer flex-1 text-left"
-                          title="터치 시 상단 편집창으로 선택, 스와이프 또는 휠로 회차 조절"
+                          className="px-1.5 py-0.5 bg-amber-50/50 hover:bg-amber-100/80 transition-colors flex-1 text-left pointer-events-auto"
+                          title="마우스 휠로 본 회차 조절 / 터치 시 상단 편집 로드"
                         >
                           <span className={`font-black truncate ${isError ? 'text-rose-700' : 'text-amber-900'}`}>
                             📌 {myEp}
@@ -1195,15 +1125,9 @@ export default function App() {
                         <span className="text-slate-300 font-normal shrink-0">/</span>
 
                         <div 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelectSuggestion(work);
-                          }}
                           onWheel={(e) => handleListWheel(e, work, 'TOTAL')}
-                          onTouchStart={handleTouchStart}
-                          onTouchEnd={(e) => handleListTouchEnd(e, work, 'TOTAL')}
-                          className="px-1.5 py-0.5 hover:bg-slate-200/60 active:bg-slate-300/80 transition-colors cursor-pointer flex-1 text-right"
-                          title="터치 시 상단 편집창으로 선택, 스와이프 또는 휠로 회차 조절"
+                          className="px-1.5 py-0.5 hover:bg-slate-200/60 transition-colors flex-1 text-right pointer-events-auto"
+                          title="마우스 휠로 전체 회차 조절 / 터치 시 상단 편집 로드"
                         >
                           <span className="truncate text-slate-800 font-extrabold">
                             {totalEp}화
@@ -1211,7 +1135,7 @@ export default function App() {
                         </div>
                       </div>
                       
-                      {/* 2층: +1 버튼 + 상태 태그 (상태 11px, 날짜 10px로 글자 크기 복원) */}
+                      {/* 2층: +1 버튼 + 상태 태그 (상태 11px, 날짜 10px) */}
                       <div className="flex items-center gap-1 w-[160px] justify-end">
                         <button
                           onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
