@@ -607,22 +607,6 @@ export default function App() {
     return remainingDays;
   };
 
-  // 탭별 등록 개수 계산
-  const tabCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    counts['ALL'] = allWorks.length;
-    counts['NEW'] = allWorks.filter(w => getFireRemainingDays(w) !== null).length;
-
-    STATUS_TABS.forEach(tab => {
-      if (tab.id !== 'ALL' && tab.id !== 'NEW') {
-        const target = tab.id.replace(/\s+/g, '');
-        counts[tab.id] = allWorks.filter(w => (w.status || '').replace(/\s+/g, '') === target).length;
-      }
-    });
-
-    return counts;
-  }, [allWorks]);
-
   const filteredAndSortedWorks = useMemo(() => {
     const filtered = allWorks.filter((work) => {
       const myEp = work.my_episode || 0;
@@ -657,12 +641,10 @@ export default function App() {
       } else if (sortOption === 'title_desc') {
         return b.title.localeCompare(a.title, 'ko');
       } else if (sortOption === 'date_desc') {
-        // 마지막 기록 최신순
         const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
         const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
         return timeB - timeA;
       } else if (sortOption === 'date_asc') {
-        // 마지막 기록 오래된순
         const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
         const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
         return timeA - timeB;
@@ -1082,7 +1064,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* 탭 영역 (모든 탭에 실시간 개수 표시) */}
+          {/* 탭 영역 (숫자 제거, 텍스트만 표시) */}
           <div 
             ref={tabsRef}
             onMouseDown={(e) => handleTabStart(e.pageX)}
@@ -1097,30 +1079,24 @@ export default function App() {
           >
             {STATUS_TABS.map((tab) => {
               const isActive = activeTab === tab.id;
-              const count = tabCounts[tab.id] || 0;
 
               return (
                 <button
                   key={tab.id}
                   onClick={() => handleTabClick(tab.id)}
-                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-all ${
                     isActive
                       ? `${themeStyles.headerBg} text-white shadow-xs`
                       : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
                   }`}
                 >
-                  <span>{tab.label}</span>
-                  <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
-                  }`}>
-                    {count}
-                  </span>
+                  {tab.label}
                 </button>
               );
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 (모든 상태에 날짜 표시) */}
+          {/* 📋 하단 카드 목록 (모든 분류에 날짜 표시) */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1194,7 +1170,7 @@ export default function App() {
                         </div>
                       </div>
                       
-                      {/* 2층: +1 버튼 + 상태 태그 (모든 분류에 날짜 표기) */}
+                      {/* 2층: +1 버튼 + 상태 태그 (모든 분류에 날짜 표시 적용) */}
                       <div className="flex items-center gap-1 w-[160px] justify-end">
                         <button
                           onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
