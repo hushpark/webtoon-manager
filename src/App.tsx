@@ -382,8 +382,8 @@ export default function App() {
     const title = searchInput.trim();
     const hasFire = ['완결', '시즌 완결', '연재중', '휴재', '100회 미만'].includes(selectedStatus);
     const totalEp = Number(episodeInput) || 0;
-    
     const myEp = myEpisodeInput !== '' ? Number(myEpisodeInput) : 0;
+    const nowIso = new Date().toISOString();
 
     const { error } = await supabase.from('works').insert({
       title,
@@ -391,7 +391,9 @@ export default function App() {
       episode: totalEp,
       my_episode: myEp,
       status: selectedStatus,
-      has_fire_emoji: hasFire
+      has_fire_emoji: hasFire,
+      created_at: nowIso,
+      updated_at: nowIso
     });
 
     if (!error) {
@@ -708,6 +710,21 @@ export default function App() {
     return status.replace('_', '-');
   };
 
+  const formatWorkDate = (dateStr?: string) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    const now = new Date();
+    
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const isThisYear = d.getFullYear() === now.getFullYear();
+
+    return {
+      text: `${month}.${day}`,
+      isThisYear
+    };
+  };
+
   const getEpisodeBoxStyle = (myEp: number, totalEp: number) => {
     if (myEp > totalEp) {
       return 'bg-rose-100 border-rose-400 text-rose-900';
@@ -869,6 +886,11 @@ export default function App() {
                     현재: {formatStatusLabel(searchState.work.status)}
                   </span>
                 </div>
+                {searchState.work.updated_at && (
+                  <p className="text-[11px] text-blue-700 mt-1 font-medium">
+                    🕒 마지막 기록: {new Date(searchState.work.updated_at).toLocaleDateString()}
+                  </p>
+                )}
                 <p className="text-[11px] text-blue-800 mt-1 flex items-center gap-1 flex-wrap">
                   <span>제목/회차/관람회차 변경 후</span>
                   <kbd className="px-1.5 py-0.2 bg-blue-100 border border-blue-300 rounded text-[10px] font-mono font-bold text-blue-800">Alt+2</kbd>
@@ -1118,7 +1140,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 */}
+          {/* 📋 하단 카드 목록 (우측 160px 확장 + 날짜/연도 색상 표기) */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1150,11 +1172,11 @@ export default function App() {
                       <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hidden sm:inline" />
                     </div>
 
-                    {/* 오른쪽: 회차 및 상태 버튼 */}
+                    {/* 오른쪽: 회차 및 상태 버튼 (160px 너비) */}
                     <div className="flex flex-col items-end gap-0.5 shrink-0 whitespace-nowrap my-auto">
                       
                       {/* 1층: 회차 박스 */}
-                      <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[140px] justify-between overflow-hidden ${getEpisodeBoxStyle(myEp, totalEp)}`}>
+                      <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[160px] justify-between overflow-hidden ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                         <div 
                           onWheel={(e) => handleListWheel(e, work, 'MY')}
                           onTouchStart={handleTouchStart}
@@ -1182,8 +1204,8 @@ export default function App() {
                         </div>
                       </div>
                       
-                      {/* 2층: +1 버튼 + 상태 태그 */}
-                      <div className="flex items-center gap-1 w-[140px] justify-end">
+                      {/* 2층: +1 버튼 + 상태 태그 (본거일 때 날짜 표시) */}
+                      <div className="flex items-center gap-1 w-[160px] justify-end">
                         <button
                           onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
                           className="px-1.5 py-0.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black rounded border border-amber-600 transition-all flex items-center gap-0.5 shadow-xs shrink-0 active:scale-95"
@@ -1192,9 +1214,24 @@ export default function App() {
                           <Plus className="w-2.5 h-2.5" />1
                         </button>
 
-                        <span className="flex-1 py-0.5 px-1 text-[10px] bg-slate-200/90 text-slate-700 rounded font-bold shrink-0 border border-slate-300/60 text-center truncate">
-                          {formatStatusLabel(work.status)}
-                        </span>
+                        {(() => {
+                          const isBought = work.status?.includes('본거');
+                          const dateInfo = isBought ? formatWorkDate(work.updated_at || work.created_at) : null;
+
+                          return (
+                            <span 
+                              title={work.updated_at ? `최종 수정: ${new Date(work.updated_at).toLocaleString()}` : ''}
+                              className="flex-1 py-0.5 px-1 text-[9.5px] bg-slate-200/90 text-slate-700 rounded font-bold shrink-0 border border-slate-300/60 text-center truncate flex items-center justify-center gap-0.5"
+                            >
+                              <span>{formatStatusLabel(work.status)}</span>
+                              {dateInfo && (
+                                <span className={`text-[8.5px] font-mono ${dateInfo.isThisYear ? 'text-indigo-700 font-black' : 'text-amber-700 font-bold'}`}>
+                                  ({dateInfo.text})
+                                </span>
+                              )}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
