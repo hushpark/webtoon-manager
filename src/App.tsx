@@ -708,24 +708,6 @@ export default function App() {
     return status.replace('_', '-');
   };
 
-  // 날짜 및 연도 판별 함수
-  const getWorkDateInfo = (work: Work) => {
-    const rawDate = work.updated_at || work.created_at;
-    if (!rawDate) return null;
-    const d = new Date(rawDate);
-    const year = d.getFullYear();
-    const currentYear = new Date().getFullYear();
-    const isCurrentYear = year === currentYear;
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    
-    return {
-      text: `${month}.${day}`,
-      fullYear: year,
-      isCurrentYear
-    };
-  };
-
   const getEpisodeBoxStyle = (myEp: number, totalEp: number) => {
     if (myEp > totalEp) {
       return 'bg-rose-100 border-rose-400 text-rose-900';
@@ -887,13 +869,6 @@ export default function App() {
                     현재: {formatStatusLabel(searchState.work.status)}
                   </span>
                 </div>
-                {/* 상단 안내 박스 내 정확한 저장 일시 표시 */}
-                {searchState.work.updated_at && (
-                  <p className="text-[11px] text-blue-700 mt-1 font-semibold flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-blue-500" />
-                    <span>최종 기록일: {new Date(searchState.work.updated_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })}</span>
-                  </p>
-                )}
                 <p className="text-[11px] text-blue-800 mt-1 flex items-center gap-1 flex-wrap">
                   <span>제목/회차/관람회차 변경 후</span>
                   <kbd className="px-1.5 py-0.2 bg-blue-100 border border-blue-300 rounded text-[10px] font-mono font-bold text-blue-800">Alt+2</kbd>
@@ -1143,7 +1118,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 (제목 폰트 text-sm 14px 전면 적용) */}
+          {/* 📋 하단 카드 목록 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1158,8 +1133,6 @@ export default function App() {
                 const totalEp = work.episode || 0;
                 const isError = myEp > totalEp;
                 const showFire = checkHasFire(work);
-                const isSeen = (work.status || '').startsWith('본거');
-                const dateInfo = isSeen ? getWorkDateInfo(work) : null;
 
                 return (
                   <div 
@@ -1168,7 +1141,7 @@ export default function App() {
                     className="p-1.5 sm:p-2 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2 shadow-2xs min-h-[48px]"
                     title="클릭 시 선택 및 제목이 복사되었습니다."
                   >
-                    {/* 📌 왼쪽: 제목 영역 (text-sm) */}
+                    {/* 왼쪽: 제목 */}
                     <div className="flex items-center gap-1.5 min-w-0 flex-1 my-auto pr-1">
                       {showFire && <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20 shrink-0" />}
                       <span className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 leading-tight line-clamp-2">
@@ -1177,19 +1150,17 @@ export default function App() {
                       <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hidden sm:inline" />
                     </div>
 
-                    {/* 📌 오른쪽: 2층 세로 구조 (w-[160px]로 안전하게 확장하여 날짜까지 수용) */}
+                    {/* 오른쪽: 회차 및 상태 버튼 */}
                     <div className="flex flex-col items-end gap-0.5 shrink-0 whitespace-nowrap my-auto">
                       
                       {/* 1층: 회차 박스 */}
-                      <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[160px] justify-between overflow-hidden ${getEpisodeBoxStyle(myEp, totalEp)}`}>
-                        
-                        {/* 👈 좌측: 내가 본 회차 (📌 공백 및 진한 색상 적용) */}
+                      <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[140px] justify-between overflow-hidden ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                         <div 
                           onWheel={(e) => handleListWheel(e, work, 'MY')}
                           onTouchStart={handleTouchStart}
                           onTouchEnd={(e) => handleListTouchEnd(e, work, 'MY')}
-                          className="px-2 py-0.5 bg-amber-50/50 hover:bg-amber-100/80 active:bg-amber-200/90 transition-colors cursor-ns-resize flex-1 text-left"
-                          title="마우스 휠(위/아래) 또는 터치 스와이프(좌/우)로 본 회차 +1 / -1"
+                          className="px-1.5 py-0.5 bg-amber-50/50 hover:bg-amber-100/80 active:bg-amber-200/90 transition-colors cursor-ns-resize flex-1 text-left"
+                          title="마우스 휠 또는 터치 스와이프로 본 회차 조절"
                         >
                           <span className={`font-black truncate ${isError ? 'text-rose-700' : 'text-amber-900'}`}>
                             📌 {myEp}
@@ -1198,23 +1169,21 @@ export default function App() {
 
                         <span className="text-slate-300 font-normal shrink-0">/</span>
 
-                        {/* 👉 우측: 전체 회차 */}
                         <div 
                           onWheel={(e) => handleListWheel(e, work, 'TOTAL')}
                           onTouchStart={handleTouchStart}
                           onTouchEnd={(e) => handleListTouchEnd(e, work, 'TOTAL')}
-                          className="px-2 py-0.5 hover:bg-slate-200/60 active:bg-slate-300/80 transition-colors cursor-ns-resize flex-1 text-right"
-                          title="마우스 휠(위/아래) 또는 터치 스와이프(좌/우)로 전체 회차 +1 / -1"
+                          className="px-1.5 py-0.5 hover:bg-slate-200/60 active:bg-slate-300/80 transition-colors cursor-ns-resize flex-1 text-right"
+                          title="마우스 휠 또는 터치 스와이프로 전체 회차 조절"
                         >
                           <span className="truncate text-slate-800 font-extrabold">
                             {totalEp}화
                           </span>
                         </div>
-
                       </div>
                       
-                      {/* 2층: +1 버튼 + 상태 태그(본거일 때 선명한 날짜 표기) */}
-                      <div className="flex items-center gap-1 w-[160px] justify-end">
+                      {/* 2층: +1 버튼 + 상태 태그 */}
+                      <div className="flex items-center gap-1 w-[140px] justify-end">
                         <button
                           onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
                           className="px-1.5 py-0.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black rounded border border-amber-600 transition-all flex items-center gap-0.5 shadow-xs shrink-0 active:scale-95"
@@ -1223,24 +1192,9 @@ export default function App() {
                           <Plus className="w-2.5 h-2.5" />1
                         </button>
 
-                        <div className="flex-1 py-0.5 px-1 bg-slate-200/90 rounded border border-slate-300/60 flex items-center justify-center gap-1 text-[10px] leading-tight overflow-hidden">
-                          <span className="font-bold text-slate-800 truncate">
-                            {formatStatusLabel(work.status)}
-                          </span>
-                          {/* 또렷하고 선명한 연도별 색상 적용 날짜 */}
-                          {dateInfo && (
-                            <span 
-                              className={`text-[9.5px] font-black font-mono shrink-0 px-1 py-0.2 rounded ${
-                                dateInfo.isCurrentYear 
-                                  ? 'text-indigo-950 bg-indigo-100/80 border border-indigo-200' 
-                                  : 'text-amber-950 bg-amber-200 border border-amber-400'
-                              }`}
-                              title={`${dateInfo.fullYear}년 ${dateInfo.text} 기록`}
-                            >
-                              {dateInfo.text}
-                            </span>
-                          )}
-                        </div>
+                        <span className="flex-1 py-0.5 px-1 text-[10px] bg-slate-200/90 text-slate-700 rounded font-bold shrink-0 border border-slate-300/60 text-center truncate">
+                          {formatStatusLabel(work.status)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1266,14 +1220,13 @@ export default function App() {
 
       </main>
 
-      {/* 🚀 중앙 콘텐츠 밀착형 플로팅 액션 버튼 (조건 충족 시에만 노출 / 높이 상향 및 모바일 텍스트 숨김) */}
+      {/* 🚀 중앙 밀착형 플로팅 액션 버튼 */}
       {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
         <aside 
           aria-label="빠른 실행 메뉴"
-          className="fixed left-1/2 -translate-x-1/2 w-full max-w-xl pointer-events-none z-40 bottom-[48%]"
+          className="fixed left-1/2 -translate-x-1/2 w-full max-w-xl pointer-events-none z-40 bottom-[44%]"
         >
           <div className="flex flex-col items-end gap-2.5 pr-2 sm:pr-0 sm:translate-x-[68px] pointer-events-auto">
-            {/* 1. 신규 등록 버튼 (미등록 신규 작품 입력 시) */}
             {searchState.type === 'NEW_WORK' && (
               <button
                 type="button"
@@ -1286,7 +1239,6 @@ export default function App() {
               </button>
             )}
 
-            {/* 2. 이동 / 수정 버튼 (등록된 작품 선택 시) */}
             {searchState.type === 'EXACT_MATCH' && (
               <button
                 type="button"
@@ -1299,7 +1251,6 @@ export default function App() {
               </button>
             )}
 
-            {/* 3. 삭제 버튼 (등록된 작품 선택 시, 가장 아래쪽에 위치) */}
             {searchState.type === 'EXACT_MATCH' && (
               <button
                 type="button"
