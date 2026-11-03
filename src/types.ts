@@ -3,12 +3,15 @@ export type WorkStatus =
   | '완결' | '시즌 완결' | '연재중' | '휴재' | '100회 미만' | '휴지통';
 
 export interface Work {
-  id: string;
+  id: string; // 또는 number
   title: string;
-  title_clean: string;
+  title_clean?: string;
   episode: number;
+  my_episode?: number;
   status: WorkStatus;
-  has_fire_emoji: boolean;
+  has_fire_emoji?: boolean;
+  created_at?: string;  // 👈 추가
+  updated_at?: string;  // 👈 추가
 }
 
 export type SearchState = 
