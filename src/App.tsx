@@ -568,8 +568,8 @@ export default function App() {
     const diffX = touch.clientX - touchStartXRef.current;
     const diffY = touch.clientY - touchStartYRef.current;
 
-    // 1. 좌우 30px 이상 스와이프했을 때 회차 증감
-    if (Math.abs(diffX) > 30 && Math.abs(diffX) > Math.abs(diffY)) {
+    // 1. 좌우 25px 이상 스와이프했을 때 회차 조절
+    if (Math.abs(diffX) > 25 && Math.abs(diffX) > Math.abs(diffY)) {
       const delta = diffX > 0 ? 1 : -1;
 
       if (type === 'MY') {
@@ -603,7 +603,7 @@ export default function App() {
         }
       }
     } 
-    // 2. 가볍게 탭했을 때 상단 폼으로 로드
+    // 2. 가볍게 톡 두드린 단순 탭인 경우 -> 모바일 터치 즉시 상단 편집창으로 로드
     else if (Math.abs(diffX) < 15 && Math.abs(diffY) < 15) {
       handleSelectSuggestion(work);
     }
@@ -1175,7 +1175,7 @@ export default function App() {
                     <div className="flex flex-col items-end gap-0.5 shrink-0 whitespace-nowrap my-auto">
                       
                       {/* 1층: 회차 박스 (터치 시 상단 폼 로드 보장) */}
-                      <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[160px] justify-between overflow-hidden ${getEpisodeBoxStyle(myEp, totalEp)}`}>
+                      <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[160px] justify-between overflow-hidden select-none ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                         <div 
                           onClick={(e) => {
                             e.stopPropagation();
