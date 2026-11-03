@@ -35,7 +35,7 @@ const UPDATE_STATUS_BUTTONS = [
 type UpdateButtonType = typeof UPDATE_STATUS_BUTTONS[number];
 
 const STATUS_TABS = [
-  { id: 'NEW', label: '신규' },
+  { id: 'NEW', label: '신규 (7일)' },
   { id: 'ALL', label: '전체' },
   { id: '본거_완결', label: '본거-완결' },
   { id: '본거_시즌완결', label: '본거-시즌완결' },
@@ -55,8 +55,8 @@ export default function App() {
   const [searchInput, setSearchInput] = useState('');
   const [searchState, setSearchState] = useState<SearchState>({ type: 'IDLE' });
   const [selectedStatus, setSelectedStatus] = useState<WorkStatus | ''>('');
-  const [episodeInput, setEpisodeInput] = useState<number | ''>('');
-  const [myEpisodeInput, setMyEpisodeInput] = useState<number | ''>('');
+  const [episodeInput, setEpisodeInput] = useState<string>('');
+  const [myEpisodeInput, setMyEpisodeInput] = useState<string>('');
   const [logs, setLogs] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading] = useState(false);
@@ -175,7 +175,7 @@ export default function App() {
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleEnd);
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
     window.addEventListener('touchend', handleEnd);
 
     return () => {
@@ -187,7 +187,7 @@ export default function App() {
   }, []);
 
   const startDraggingBox = (clientX: number, clientY: number, target: HTMLElement) => {
-    if (target.tagName === 'SELECT') return;
+    if (target.tagName === 'SELECT' || target.tagName === 'INPUT') return;
     if (window.innerWidth < 640) return;
 
     isDraggingBoxRef.current = true;
@@ -274,8 +274,8 @@ export default function App() {
       const exact = sortedMatches.find(w => cleanTitle(w.title) === cleaned);
       if (exact) {
         setSearchState({ type: 'EXACT_MATCH', work: exact });
-        setEpisodeInput(exact.episode);
-        setMyEpisodeInput(exact.my_episode !== undefined ? exact.my_episode : 0);
+        setEpisodeInput(String(exact.episode || ''));
+        setMyEpisodeInput(String(exact.my_episode !== undefined ? exact.my_episode : ''));
         setSelectedStatus(exact.status as WorkStatus);
       } else {
         setSearchState({ type: 'NEW_WORK', query: trimmed });
@@ -290,8 +290,8 @@ export default function App() {
     setSearchInput(work.title);
     setShowSuggestions(false);
     setSearchState({ type: 'EXACT_MATCH', work });
-    setEpisodeInput(work.episode);
-    setMyEpisodeInput(work.my_episode !== undefined ? work.my_episode : 0);
+    setEpisodeInput(String(work.episode || ''));
+    setMyEpisodeInput(String(work.my_episode !== undefined ? work.my_episode : ''));
     setSelectedStatus(work.status as WorkStatus);
     setLogs((prev) => Array.from(new Set([work.title, ...prev])).slice(0, 10));
     resetTimer();
@@ -318,8 +318,8 @@ export default function App() {
 
     if (exact) {
       setSearchState({ type: 'EXACT_MATCH', work: exact });
-      setEpisodeInput(exact.episode);
-      setMyEpisodeInput(exact.my_episode !== undefined ? exact.my_episode : 0);
+      setEpisodeInput(String(exact.episode || ''));
+      setMyEpisodeInput(String(exact.my_episode !== undefined ? exact.my_episode : ''));
       setSelectedStatus(exact.status as WorkStatus);
     } else {
       setSearchState({ type: 'NEW_WORK', query: trimmed });
@@ -479,29 +479,26 @@ export default function App() {
     if (!error) {
       fetchAllWorks();
       if (searchState.type === 'EXACT_MATCH' && searchState.work.id === work.id) {
-        setMyEpisodeInput(nextMyEp);
+        setMyEpisodeInput(String(nextMyEp));
       }
     }
   };
 
-  // 모바일 터치 흐름을 방해하지 않도록 마우스 휠 동작만 제어
+  // PC 마우스 휠 조절
   const handleInputWheel = (
     e: React.WheelEvent, 
     type: 'TOTAL' | 'MY'
   ) => {
-    if (e.deltaY !== 0) {
-      e.preventDefault();
-    }
     const now = Date.now();
-    if (now - lastWheelTimeRef.current < 150) return;
+    if (now - lastWheelTimeRef.current < 120) return;
     lastWheelTimeRef.current = now;
 
     const delta = e.deltaY < 0 ? 1 : -1;
 
     if (type === 'TOTAL') {
-      setEpisodeInput((prev) => Math.max(0, (Number(prev) || 0) + delta));
+      setEpisodeInput((prev) => String(Math.max(0, (Number(prev) || 0) + delta)));
     } else {
-      setMyEpisodeInput((prev) => Math.max(0, (Number(prev) || 0) + delta));
+      setMyEpisodeInput((prev) => String(Math.max(0, (Number(prev) || 0) + delta)));
     }
   };
 
@@ -587,18 +584,24 @@ export default function App() {
 
   const themeStyles = THEME_STYLES[currentTheme];
 
-  const filteredAndSortedWorks = useMemo(() => {
-    const now = new Date().getTime();
+  // 신규 남은 일수 (D-Day 카운트다운) 계산 함수
+  const getFireRemainingDays = (work: Work) => {
+    if (!work.has_fire_emoji) return null;
+    const dateStr = work.created_at || work.updated_at;
+    if (!dateStr) return null;
+
     const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    const now = new Date().getTime();
+    const workTime = new Date(dateStr).getTime();
+    const diffMs = (workTime + SEVEN_DAYS_MS) - now;
 
-    const isFireValid = (work: Work) => {
-      if (!work.has_fire_emoji) return false;
-      const dateStr = work.created_at || work.updated_at;
-      if (!dateStr) return false;
-      const workDate = new Date(dateStr).getTime();
-      return (now - workDate) <= SEVEN_DAYS_MS;
-    };
+    if (diffMs <= 0) return null; // 만료됨
 
+    const remainingDays = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+    return remainingDays;
+  };
+
+  const filteredAndSortedWorks = useMemo(() => {
     const filtered = allWorks.filter((work) => {
       const myEp = work.my_episode || 0;
       const totalEp = work.episode || 0;
@@ -611,7 +614,8 @@ export default function App() {
       }
 
       if (activeTab === 'NEW') {
-        if (!isFireValid(work)) return false;
+        const remaining = getFireRemainingDays(work);
+        if (remaining === null) return false;
       }
       else if (activeTab === 'ALL') {
         return true;
@@ -671,15 +675,6 @@ export default function App() {
       return 'bg-indigo-50/90 border-indigo-200 text-indigo-900';
     }
     return 'bg-white border-slate-200 text-slate-700';
-  };
-
-  const checkHasFire = (work: Work) => {
-    if (!work.has_fire_emoji) return false;
-    const dateStr = work.created_at || work.updated_at;
-    if (!dateStr) return false;
-    const now = new Date().getTime();
-    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-    return (now - new Date(dateStr).getTime()) <= SEVEN_DAYS_MS;
   };
 
   return (
@@ -852,7 +847,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* 2 & 3. 회차 및 분류 버튼 선택 구역 (모바일 터치 완벽 대응) */}
+        {/* 2 & 3. 회차 및 분류 버튼 선택 구역 (모바일 터치 100% 작동 보장) */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors`}>
           
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
@@ -862,17 +857,20 @@ export default function App() {
                 <span className="text-[9px] sm:text-[10px] text-slate-400 font-normal hidden sm:inline">🖱️ 휠 조절</span>
               </label>
               <input
-                type="number"
+                type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
+                onTouchStart={(e) => e.stopPropagation()}
                 onWheel={(e) => handleInputWheel(e, 'TOTAL')}
-                onTouchEnd={(e) => (e.target as HTMLInputElement).focus()}
-                className="w-full p-2 sm:p-2.5 border border-slate-300 rounded-xl font-extrabold text-base bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-400 transition-all select-text cursor-text"
+                className="w-full p-2.5 sm:p-2.5 border border-slate-300 rounded-xl font-extrabold text-base bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-400 transition-all cursor-text"
                 placeholder="최신화"
                 value={episodeInput}
                 onFocus={(e) => e.target.select()}
-                onChange={(e) => setEpisodeInput(e.target.value === '' ? '' : Number(e.target.value))}
-                title="터치하여 직접 입력하거나 마우스 휠로 조절"
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  setEpisodeInput(val);
+                }}
+                title="터치하여 직접 입력하거나 휠로 조절"
               />
             </div>
 
@@ -885,17 +883,20 @@ export default function App() {
                 <span className="text-[9px] sm:text-[10px] text-amber-700 font-normal hidden sm:inline">🖱️ 휠 조절</span>
               </label>
               <input
-                type="number"
+                type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
+                onTouchStart={(e) => e.stopPropagation()}
                 onWheel={(e) => handleInputWheel(e, 'MY')}
-                onTouchEnd={(e) => (e.target as HTMLInputElement).focus()}
-                className="w-full p-2 sm:p-2.5 border border-amber-500 bg-amber-50/90 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-600 placeholder-amber-400 transition-all select-text cursor-text"
+                className="w-full p-2.5 sm:p-2.5 border border-amber-500 bg-amber-50/90 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-600 placeholder-amber-400 transition-all cursor-text"
                 placeholder="보던 위치"
                 value={myEpisodeInput}
                 onFocus={(e) => e.target.select()}
-                onChange={(e) => setMyEpisodeInput(e.target.value === '' ? '' : Number(e.target.value))}
-                title="터치하여 직접 입력하거나 마우스 휠로 조절"
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  setMyEpisodeInput(val);
+                }}
+                title="터치하여 직접 입력하거나 휠로 조절"
               />
             </div>
           </div>
@@ -1082,7 +1083,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 */}
+          {/* 📋 하단 카드 목록 (디데이 표기 적용) */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1096,7 +1097,7 @@ export default function App() {
                 const myEp = work.my_episode || 0;
                 const totalEp = work.episode || 0;
                 const isError = myEp > totalEp;
-                const showFire = checkHasFire(work);
+                const remainingFireDays = getFireRemainingDays(work);
 
                 return (
                   <div 
@@ -1105,9 +1106,22 @@ export default function App() {
                     className="p-1.5 sm:p-2 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2 shadow-2xs min-h-[48px]"
                     title="클릭 시 상단 편집창으로 로드 및 제목 복사"
                   >
-                    {/* 왼쪽: 제목 */}
+                    {/* 왼쪽: 제목 및 신규 디데이 카운트다운 */}
                     <div className="flex items-center gap-1.5 min-w-0 flex-1 my-auto pr-1">
-                      {showFire && <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20 shrink-0" />}
+                      {remainingFireDays !== null && (
+                        <span 
+                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black shrink-0 ${
+                            remainingFireDays <= 1 
+                              ? 'bg-rose-100 text-rose-700 border border-rose-300 animate-pulse' 
+                              : 'bg-amber-100 text-amber-800 border border-amber-300'
+                          }`}
+                          title={`신규 탭 유지 기한: ${remainingFireDays}일 남음`}
+                        >
+                          <Flame className="w-3 h-3 fill-current shrink-0" />
+                          <span>{remainingFireDays === 0 ? 'D-Day' : `D-${remainingFireDays}`}</span>
+                        </span>
+                      )}
+
                       <span className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 leading-tight line-clamp-2">
                         {work.title}
                       </span>
@@ -1142,7 +1156,7 @@ export default function App() {
                         </div>
                       </div>
                       
-                      {/* 2층: +1 버튼 + 상태 태그 (상태 11px, 날짜 10px로 확대 복원) */}
+                      {/* 2층: +1 버튼 + 상태 태그 (상태 11px, 날짜 10px) */}
                       <div className="flex items-center gap-1 w-[160px] justify-end">
                         <button
                           onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
