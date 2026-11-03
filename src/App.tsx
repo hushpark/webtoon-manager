@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from './lib/supabase';
-import type { WorkStatus, Work as BaseWork, SearchState, ThemeType } from './types';
+import type { WorkStatus, SearchState, ThemeType, Work } from './types';
 import { THEME_STYLES } from './theme';
 import { 
   Search, 
@@ -23,12 +23,6 @@ import {
   Move,
   Bookmark
 } from 'lucide-react';
-
-export interface Work extends BaseWork {
-  my_episode?: number;
-  created_at?: string;
-  updated_at?: string;
-}
 
 const NEW_WORK_STATUS_OPTIONS: WorkStatus[] = [
   '연재중', '완결', '시즌 완결', '휴재', '100회 미만', '휴지통'
@@ -574,6 +568,7 @@ export default function App() {
     const diffX = touch.clientX - touchStartXRef.current;
     const diffY = touch.clientY - touchStartYRef.current;
 
+    // 1. 좌우 30px 이상 스와이프했을 때는 회차 증감
     if (Math.abs(diffX) > 30 && Math.abs(diffX) > Math.abs(diffY)) {
       const delta = diffX > 0 ? 1 : -1;
 
@@ -607,6 +602,10 @@ export default function App() {
           showToast(`📖 '${work.title}' 전체 회차: ${nextTotalEp}화`);
         }
       }
+    } 
+    // 2. 가볍게 톡 탭했을 때는 상단 입력창으로 바로 선택 로드
+    else if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
+      handleSelectSuggestion(work);
     }
 
     touchStartXRef.current = null;
@@ -1140,7 +1139,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 (우측 160px 확장 + 날짜/연도 색상 표기) */}
+          {/* 📋 하단 카드 목록 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1178,11 +1177,15 @@ export default function App() {
                       {/* 1층: 회차 박스 */}
                       <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[160px] justify-between overflow-hidden ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                         <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectSuggestion(work);
+                          }}
                           onWheel={(e) => handleListWheel(e, work, 'MY')}
                           onTouchStart={handleTouchStart}
                           onTouchEnd={(e) => handleListTouchEnd(e, work, 'MY')}
                           className="px-1.5 py-0.5 bg-amber-50/50 hover:bg-amber-100/80 active:bg-amber-200/90 transition-colors cursor-ns-resize flex-1 text-left"
-                          title="마우스 휠 또는 터치 스와이프로 본 회차 조절"
+                          title="가볍게 터치 시 상단 편집창으로 선택, 스와이프나 휠로 조절"
                         >
                           <span className={`font-black truncate ${isError ? 'text-rose-700' : 'text-amber-900'}`}>
                             📌 {myEp}
@@ -1192,11 +1195,15 @@ export default function App() {
                         <span className="text-slate-300 font-normal shrink-0">/</span>
 
                         <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectSuggestion(work);
+                          }}
                           onWheel={(e) => handleListWheel(e, work, 'TOTAL')}
                           onTouchStart={handleTouchStart}
                           onTouchEnd={(e) => handleListTouchEnd(e, work, 'TOTAL')}
                           className="px-1.5 py-0.5 hover:bg-slate-200/60 active:bg-slate-300/80 transition-colors cursor-ns-resize flex-1 text-right"
-                          title="마우스 휠 또는 터치 스와이프로 전체 회차 조절"
+                          title="가볍게 터치 시 상단 편집창으로 선택, 스와이프나 휠로 조절"
                         >
                           <span className="truncate text-slate-800 font-extrabold">
                             {totalEp}화
@@ -1204,7 +1211,7 @@ export default function App() {
                         </div>
                       </div>
                       
-                      {/* 2층: +1 버튼 + 상태 태그 (본거일 때 날짜 표시) */}
+                      {/* 2층: +1 버튼 + 상태 태그 (상태 11px, 날짜 10px로 글씨 크기 복원) */}
                       <div className="flex items-center gap-1 w-[160px] justify-end">
                         <button
                           onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
@@ -1221,11 +1228,11 @@ export default function App() {
                           return (
                             <span 
                               title={work.updated_at ? `최종 수정: ${new Date(work.updated_at).toLocaleString()}` : ''}
-                              className="flex-1 py-0.5 px-1 text-[9.5px] bg-slate-200/90 text-slate-700 rounded font-bold shrink-0 border border-slate-300/60 text-center truncate flex items-center justify-center gap-0.5"
+                              className="flex-1 py-0.5 px-1.5 text-[11px] bg-slate-200/90 text-slate-800 rounded font-bold shrink-0 border border-slate-300/60 text-center truncate flex items-center justify-center gap-1"
                             >
                               <span>{formatStatusLabel(work.status)}</span>
                               {dateInfo && (
-                                <span className={`text-[8.5px] font-mono ${dateInfo.isThisYear ? 'text-indigo-700 font-black' : 'text-amber-700 font-bold'}`}>
+                                <span className={`text-[10px] font-mono ${dateInfo.isThisYear ? 'text-indigo-700 font-black' : 'text-amber-700 font-bold'}`}>
                                   ({dateInfo.text})
                                 </span>
                               )}
