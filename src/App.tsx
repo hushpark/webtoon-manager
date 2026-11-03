@@ -298,7 +298,7 @@ export default function App() {
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(work.title).then(() => {
-        showToast(`📋 '${work.title}' 제목이 복사되었습니다.`);
+        showToast(`📋 '${work.title}' 선택됨 (복사 완료)`);
       }).catch(() => {});
     }
   };
@@ -484,7 +484,6 @@ export default function App() {
     }
   };
 
-  // PC 마우스 휠 조절
   const handleInputWheel = (
     e: React.WheelEvent, 
     type: 'TOTAL' | 'MY'
@@ -584,7 +583,6 @@ export default function App() {
 
   const themeStyles = THEME_STYLES[currentTheme];
 
-  // 신규 남은 일수 (D-Day 카운트다운) 계산 함수
   const getFireRemainingDays = (work: Work) => {
     if (!work.has_fire_emoji) return null;
     const dateStr = work.created_at || work.updated_at;
@@ -595,7 +593,7 @@ export default function App() {
     const workTime = new Date(dateStr).getTime();
     const diffMs = (workTime + SEVEN_DAYS_MS) - now;
 
-    if (diffMs <= 0) return null; // 만료됨
+    if (diffMs <= 0) return null;
 
     const remainingDays = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
     return remainingDays;
@@ -678,7 +676,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-16 transition-colors duration-300 flex flex-col items-center`}>
+    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-24 transition-colors duration-300 flex flex-col items-center`}>
       
       {/* 상단 헤더 */}
       <header className="w-full sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-xs">
@@ -718,10 +716,10 @@ export default function App() {
       </header>
 
       {/* 메인 컨테이너 */}
-      <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1 flex flex-col items-stretch">
+      <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1 flex flex-col items-stretch relative z-10">
         
         {/* 1. 작품 검색 입력 */}
-        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative`}>
+        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
           <div className="flex justify-between items-center">
             <label className={`text-xs font-bold uppercase tracking-wider ${themeStyles.accentText}`}>
               작품 제목 입력
@@ -847,8 +845,8 @@ export default function App() {
           </div>
         </section>
 
-        {/* 2 & 3. 회차 및 분류 버튼 선택 구역 (모바일 터치 100% 작동 보장) */}
-        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors`}>
+        {/* 2 & 3. 상단 회차 및 분류 구역 (터치 방해 절대 없음) */}
+        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
           
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
             <div>
@@ -860,12 +858,10 @@ export default function App() {
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                onTouchStart={(e) => e.stopPropagation()}
                 onWheel={(e) => handleInputWheel(e, 'TOTAL')}
-                className="w-full p-2.5 sm:p-2.5 border border-slate-300 rounded-xl font-extrabold text-base bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-400 transition-all cursor-text"
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-extrabold text-base bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-400 transition-all cursor-text"
                 placeholder="최신화"
                 value={episodeInput}
-                onFocus={(e) => e.target.select()}
                 onChange={(e) => {
                   const val = e.target.value.replace(/[^0-9]/g, '');
                   setEpisodeInput(val);
@@ -886,12 +882,10 @@ export default function App() {
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                onTouchStart={(e) => e.stopPropagation()}
                 onWheel={(e) => handleInputWheel(e, 'MY')}
-                className="w-full p-2.5 sm:p-2.5 border border-amber-500 bg-amber-50/90 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-600 placeholder-amber-400 transition-all cursor-text"
+                className="w-full p-2.5 border border-amber-500 bg-amber-50/90 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-600 placeholder-amber-400 transition-all cursor-text"
                 placeholder="보던 위치"
                 value={myEpisodeInput}
-                onFocus={(e) => e.target.select()}
                 onChange={(e) => {
                   const val = e.target.value.replace(/[^0-9]/g, '');
                   setMyEpisodeInput(val);
@@ -1005,7 +999,7 @@ export default function App() {
             top: `${position.y}px`,
             width: '100%',
             maxWidth: '576px',
-            zIndex: 50
+            zIndex: 30
           } : {}}
           className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3 sm:p-4 shadow-xl space-y-3 transition-colors`}
         >
@@ -1083,7 +1077,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 (디데이 표기 적용) */}
+          {/* 📋 하단 카드 목록 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1209,55 +1203,53 @@ export default function App() {
 
       </main>
 
-      {/* 🚀 중앙 플로팅 버튼 */}
+      {/* 🚀 액션 버튼 (입력창을 가리지 않도록 화면 우측 하단으로 완전히 이동) */}
       {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
         <aside 
           aria-label="빠른 실행 메뉴"
-          className="fixed left-1/2 -translate-x-1/2 w-full max-w-xl pointer-events-none z-40 bottom-[44%]"
+          className="fixed right-4 bottom-6 z-50 flex flex-col gap-2 pointer-events-auto"
         >
-          <div className="flex flex-col items-end gap-2.5 pr-2 sm:pr-0 sm:translate-x-[68px] pointer-events-auto">
-            {searchState.type === 'NEW_WORK' && (
-              <button
-                type="button"
-                onClick={handleRegister}
-                className={`flex items-center gap-1.5 p-3 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.secondaryBtn} text-white border-emerald-400/50 shadow-emerald-500/40`}
-                title="신규 등록 (Alt+1)"
-              >
-                <PlusCircle className="w-5 h-5 shrink-0" />
-                <span className="hidden sm:inline">신규 등록</span>
-              </button>
-            )}
+          {searchState.type === 'NEW_WORK' && (
+            <button
+              type="button"
+              onClick={handleRegister}
+              className={`flex items-center gap-1.5 p-3 sm:px-4 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.secondaryBtn} text-white border-emerald-400/50 shadow-emerald-500/40`}
+              title="신규 등록 (Alt+1)"
+            >
+              <PlusCircle className="w-5 h-5 shrink-0" />
+              <span className="inline">신규 등록</span>
+            </button>
+          )}
 
-            {searchState.type === 'EXACT_MATCH' && (
-              <button
-                type="button"
-                onClick={handleMoveOrUpdate}
-                className={`flex items-center gap-1.5 p-3 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.primaryBtn} text-white border-indigo-400/50 shadow-indigo-500/40`}
-                title="이동 / 수정 (Alt+2)"
-              >
-                <ArrowRightLeft className="w-5 h-5 shrink-0" />
-                <span className="hidden sm:inline">이동/수정</span>
-              </button>
-            )}
+          {searchState.type === 'EXACT_MATCH' && (
+            <button
+              type="button"
+              onClick={handleMoveOrUpdate}
+              className={`flex items-center gap-1.5 p-3 sm:px-4 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.primaryBtn} text-white border-indigo-400/50 shadow-indigo-500/40`}
+              title="이동 / 수정 (Alt+2)"
+            >
+              <ArrowRightLeft className="w-5 h-5 shrink-0" />
+              <span className="inline">이동/수정</span>
+            </button>
+          )}
 
-            {searchState.type === 'EXACT_MATCH' && (
-              <button
-                type="button"
-                onClick={handleDeleteWork}
-                className="flex items-center gap-1.5 p-3 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border bg-rose-600 hover:bg-rose-700 text-white border-rose-400/50 shadow-rose-500/40"
-                title="데이터베이스에서 완전히 삭제"
-              >
-                <Trash2 className="w-5 h-5 shrink-0" />
-                <span className="hidden sm:inline">삭제</span>
-              </button>
-            )}
-          </div>
+          {searchState.type === 'EXACT_MATCH' && (
+            <button
+              type="button"
+              onClick={handleDeleteWork}
+              className="flex items-center gap-1.5 p-3 sm:px-4 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border bg-rose-600 hover:bg-rose-700 text-white border-rose-400/50 shadow-rose-500/40"
+              title="데이터베이스에서 완전히 삭제"
+            >
+              <Trash2 className="w-5 h-5 shrink-0" />
+              <span className="inline">삭제</span>
+            </button>
+          )}
         </aside>
       )}
 
-      {/* 📋 토스트 팝업 */}
+      {/* 📋 토스트 팝업 (포커스를 막지 않도록 pointer-events-none 적용) */}
       {toastMessage && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-2xl z-50 flex items-center gap-2 backdrop-blur-sm border border-slate-700 animate-fade-in">
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-2xl z-50 flex items-center gap-2 backdrop-blur-sm border border-slate-700 pointer-events-none animate-fade-in">
           <Check className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
