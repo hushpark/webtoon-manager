@@ -49,7 +49,15 @@ const STATUS_TABS = [
   { id: '휴지통', label: '휴지통' },
 ];
 
-type SortOption = 'title_asc' | 'title_desc' | 'ep_desc' | 'ep_asc' | 'err_my_gt_total' | 'diff_my_lt_total';
+type SortOption = 
+  | 'title_asc' 
+  | 'title_desc' 
+  | 'date_desc' 
+  | 'date_asc' 
+  | 'ep_desc' 
+  | 'ep_asc' 
+  | 'err_my_gt_total' 
+  | 'diff_my_lt_total';
 
 export default function App() {
   const [searchInput, setSearchInput] = useState('');
@@ -70,7 +78,7 @@ export default function App() {
   const [allWorks, setAllWorks] = useState<Work[]>([]);
   
   const [activeTab, setActiveTab] = useState<string>('NEW');
-  const [sortOption, setSortOption] = useState<SortOption>('title_asc');
+  const [sortOption, setSortOption] = useState<SortOption>('date_desc');
 
   const [listHeight, setListHeight] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 640) {
@@ -298,7 +306,7 @@ export default function App() {
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(work.title).then(() => {
-        showToast(`📋 '${work.title}' 선택됨 (복사 완료)`);
+        showToast(`📋 '${work.title}' 선택 완료`);
       }).catch(() => {});
     }
   };
@@ -599,6 +607,22 @@ export default function App() {
     return remainingDays;
   };
 
+  // 탭별 등록 개수 계산
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    counts['ALL'] = allWorks.length;
+    counts['NEW'] = allWorks.filter(w => getFireRemainingDays(w) !== null).length;
+
+    STATUS_TABS.forEach(tab => {
+      if (tab.id !== 'ALL' && tab.id !== 'NEW') {
+        const target = tab.id.replace(/\s+/g, '');
+        counts[tab.id] = allWorks.filter(w => (w.status || '').replace(/\s+/g, '') === target).length;
+      }
+    });
+
+    return counts;
+  }, [allWorks]);
+
   const filteredAndSortedWorks = useMemo(() => {
     const filtered = allWorks.filter((work) => {
       const myEp = work.my_episode || 0;
@@ -632,6 +656,16 @@ export default function App() {
         return a.title.localeCompare(b.title, 'ko');
       } else if (sortOption === 'title_desc') {
         return b.title.localeCompare(a.title, 'ko');
+      } else if (sortOption === 'date_desc') {
+        // 마지막 기록 최신순
+        const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
+        const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
+        return timeB - timeA;
+      } else if (sortOption === 'date_asc') {
+        // 마지막 기록 오래된순
+        const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
+        const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
+        return timeA - timeB;
       } else if (sortOption === 'ep_desc') {
         return b.episode - a.episode;
       } else if (sortOption === 'ep_asc') {
@@ -676,7 +710,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-24 transition-colors duration-300 flex flex-col items-center`}>
+    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-28 transition-colors duration-300 flex flex-col items-center`}>
       
       {/* 상단 헤더 */}
       <header className="w-full sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-xs">
@@ -845,7 +879,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* 2 & 3. 상단 회차 및 분류 구역 (터치 방해 절대 없음) */}
+        {/* 2 & 3. 상단 회차 및 분류 구역 */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
           
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
@@ -1003,7 +1037,7 @@ export default function App() {
           } : {}}
           className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3 sm:p-4 shadow-xl space-y-3 transition-colors`}
         >
-          {/* 상단 드래그 헤더 */}
+          {/* 상단 드래그 헤더 및 정렬 옵션 */}
           <div 
             onMouseDown={(e) => startDraggingBox(e.clientX, e.clientY, e.target as HTMLElement)}
             onTouchStart={(e) => {
@@ -1024,8 +1058,10 @@ export default function App() {
               <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value as SortOption)}
-                className="bg-slate-50 border border-slate-200 text-slate-600 text-[11px] sm:text-xs rounded-lg px-1.5 sm:px-2 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer font-bold"
+                className="bg-slate-50 border border-slate-200 text-slate-700 text-[11px] sm:text-xs rounded-lg px-1.5 sm:px-2 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer font-bold shadow-2xs"
               >
+                <option value="date_desc">🕒 마지막 기록 (최신순)</option>
+                <option value="date_asc">🕒 마지막 기록 (오래된순)</option>
                 <option value="title_asc">이름 (ㄱ-ㅎ)</option>
                 <option value="title_desc">이름 (ㅎ-ㄱ)</option>
                 <option value="ep_desc">전체회차 높은순</option>
@@ -1046,7 +1082,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* 탭 영역 */}
+          {/* 탭 영역 (모든 탭에 실시간 개수 표시) */}
           <div 
             ref={tabsRef}
             onMouseDown={(e) => handleTabStart(e.pageX)}
@@ -1061,23 +1097,30 @@ export default function App() {
           >
             {STATUS_TABS.map((tab) => {
               const isActive = activeTab === tab.id;
+              const count = tabCounts[tab.id] || 0;
+
               return (
                 <button
                   key={tab.id}
                   onClick={() => handleTabClick(tab.id)}
-                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-all ${
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-all flex items-center gap-1.5 ${
                     isActive
                       ? `${themeStyles.headerBg} text-white shadow-xs`
                       : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
                   }`}
                 >
-                  {tab.label}
+                  <span>{tab.label}</span>
+                  <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {count}
+                  </span>
                 </button>
               );
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 */}
+          {/* 📋 하단 카드 목록 (모든 상태에 날짜 표시) */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1092,6 +1135,7 @@ export default function App() {
                 const totalEp = work.episode || 0;
                 const isError = myEp > totalEp;
                 const remainingFireDays = getFireRemainingDays(work);
+                const dateInfo = formatWorkDate(work.updated_at || work.created_at);
 
                 return (
                   <div 
@@ -1150,7 +1194,7 @@ export default function App() {
                         </div>
                       </div>
                       
-                      {/* 2층: +1 버튼 + 상태 태그 (상태 11px, 날짜 10px) */}
+                      {/* 2층: +1 버튼 + 상태 태그 (모든 분류에 날짜 표기) */}
                       <div className="flex items-center gap-1 w-[160px] justify-end">
                         <button
                           onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
@@ -1160,24 +1204,17 @@ export default function App() {
                           <Plus className="w-2.5 h-2.5" />1
                         </button>
 
-                        {(() => {
-                          const isBought = work.status?.includes('본거');
-                          const dateInfo = isBought ? formatWorkDate(work.updated_at || work.created_at) : null;
-
-                          return (
-                            <span 
-                              title={work.updated_at ? `최종 수정: ${new Date(work.updated_at).toLocaleString()}` : ''}
-                              className="flex-1 py-0.5 px-1.5 text-[11px] bg-slate-200/90 text-slate-800 rounded font-bold shrink-0 border border-slate-300/60 text-center truncate flex items-center justify-center gap-1"
-                            >
-                              <span>{formatStatusLabel(work.status)}</span>
-                              {dateInfo && (
-                                <span className={`text-[10px] font-mono ${dateInfo.isThisYear ? 'text-indigo-700 font-black' : 'text-amber-700 font-bold'}`}>
-                                  ({dateInfo.text})
-                                </span>
-                              )}
+                        <span 
+                          title={work.updated_at ? `최종 수정: ${new Date(work.updated_at).toLocaleString()}` : ''}
+                          className="flex-1 py-0.5 px-1.5 text-[11px] bg-slate-200/90 text-slate-800 rounded font-bold shrink-0 border border-slate-300/60 text-center truncate flex items-center justify-center gap-1"
+                        >
+                          <span>{formatStatusLabel(work.status)}</span>
+                          {dateInfo && (
+                            <span className={`text-[10px] font-mono ${dateInfo.isThisYear ? 'text-indigo-700 font-black' : 'text-amber-700 font-bold'}`}>
+                              ({dateInfo.text})
                             </span>
-                          );
-                        })()}
+                          )}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1203,7 +1240,7 @@ export default function App() {
 
       </main>
 
-      {/* 🚀 액션 버튼 (입력창을 가리지 않도록 화면 우측 하단으로 완전히 이동) */}
+      {/* 🚀 액션 버튼 (입력창을 가리지 않도록 화면 우측 하단 고정) */}
       {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
         <aside 
           aria-label="빠른 실행 메뉴"
