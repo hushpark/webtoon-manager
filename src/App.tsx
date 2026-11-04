@@ -847,7 +847,6 @@ export default function App() {
               </div>
             )}
 
-            {/* TypeScript undefined 에러 방지 처리 (|| '') */}
             {!loading && searchState.type === 'EXACT_MATCH' && (
               <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl text-xs sm:text-sm text-blue-900 space-y-1">
                 <div className="font-extrabold text-blue-700 text-sm sm:text-base flex items-center justify-between">
@@ -890,7 +889,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* 2 & 3. 상단 회차 및 분류 구역 */}
+        {/* 2 & 3. 상단 회차 및 분류 구역 + 🚀 플로팅 버튼이 바로 옆/위에 밀착 */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
           
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
@@ -1013,6 +1012,52 @@ export default function App() {
               <span>{errorMessage}</span>
             </div>
           )}
+
+          {/* 🚀 요청하신 위치로 완벽 고정된 플로팅 액션 버튼 */}
+          {/* 웹: 2번째 카드 우측 날개 (보던위치 ~ 시즌완결 중간) | 모바일: 우측 가장자리 밀착 */}
+          {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
+            <aside 
+              aria-label="빠른 실행 메뉴"
+              className="absolute right-2 sm:-right-24 top-16 sm:top-20 z-40 flex flex-col gap-2 pointer-events-auto"
+            >
+              {searchState.type === 'NEW_WORK' && (
+                <button
+                  type="button"
+                  onClick={handleRegister}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.secondaryBtn} text-white border-emerald-400/50 shadow-emerald-500/40`}
+                  title="신규 등록 (Alt+1)"
+                >
+                  <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="inline">신규 등록</span>
+                </button>
+              )}
+
+              {searchState.type === 'EXACT_MATCH' && (
+                <button
+                  type="button"
+                  onClick={handleMoveOrUpdate}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.primaryBtn} text-white border-indigo-400/50 shadow-indigo-500/40`}
+                  title="이동 / 수정 (Alt+2)"
+                >
+                  <ArrowRightLeft className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="inline">이동/수정</span>
+                </button>
+              )}
+
+              {searchState.type === 'EXACT_MATCH' && (
+                <button
+                  type="button"
+                  onClick={handleDeleteWork}
+                  className="flex items-center gap-1.5 px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border bg-rose-600 hover:bg-rose-700 text-white border-rose-400/50 shadow-rose-500/40"
+                  title="데이터베이스에서 완전히 삭제"
+                >
+                  <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="inline">삭제</span>
+                </button>
+              )}
+            </aside>
+          )}
+
         </section>
 
         {logs.length > 0 && (
@@ -1065,7 +1110,6 @@ export default function App() {
               <span>전체 목록 ({filteredAndSortedWorks.length})</span>
             </span>
 
-            {/* 정렬 드롭다운 메뉴 (모든 항목 이모지 및 체계적 그룹화) */}
             <div className="flex items-center gap-1 shrink-0">
               <select
                 value={sortOption}
@@ -1254,52 +1298,6 @@ export default function App() {
         </section>
 
       </main>
-
-      {/* 🚀 중앙 밀착형 플로팅 액션 버튼 (PC 웹 및 모바일 양쪽 모두 완벽 노출) */}
-      {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
-        <aside 
-          aria-label="빠른 실행 메뉴"
-          className="fixed left-1/2 -translate-x-1/2 sm:translate-x-[200px] md:translate-x-[240px] pointer-events-none z-50 bottom-[44%]"
-        >
-          <div className="flex flex-col items-end gap-2.5 pr-2 sm:pr-0">
-            {searchState.type === 'NEW_WORK' && (
-              <button
-                type="button"
-                onClick={handleRegister}
-                className={`pointer-events-auto flex items-center gap-1.5 p-3 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.secondaryBtn} text-white border-emerald-400/50 shadow-emerald-500/40`}
-                title="신규 등록 (Alt+1)"
-              >
-                <PlusCircle className="w-5 h-5 shrink-0" />
-                <span className="inline">신규 등록</span>
-              </button>
-            )}
-
-            {searchState.type === 'EXACT_MATCH' && (
-              <button
-                type="button"
-                onClick={handleMoveOrUpdate}
-                className={`pointer-events-auto flex items-center gap-1.5 p-3 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.primaryBtn} text-white border-indigo-400/50 shadow-indigo-500/40`}
-                title="이동 / 수정 (Alt+2)"
-              >
-                <ArrowRightLeft className="w-5 h-5 shrink-0" />
-                <span className="inline">이동/수정</span>
-              </button>
-            )}
-
-            {searchState.type === 'EXACT_MATCH' && (
-              <button
-                type="button"
-                onClick={handleDeleteWork}
-                className="pointer-events-auto flex items-center gap-1.5 p-3 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border bg-rose-600 hover:bg-rose-700 text-white border-rose-400/50 shadow-rose-500/40"
-                title="데이터베이스에서 완전히 삭제"
-              >
-                <Trash2 className="w-5 h-5 shrink-0" />
-                <span className="inline">삭제</span>
-              </button>
-            )}
-          </div>
-        </aside>
-      )}
 
       {/* 📋 토스트 팝업 */}
       {toastMessage && (
