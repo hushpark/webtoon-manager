@@ -692,7 +692,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-28 transition-colors duration-300 flex flex-col items-center`}>
+    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-24 transition-colors duration-300 flex flex-col items-center`}>
       
       {/* 상단 헤더 */}
       <header className="w-full sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-xs">
@@ -732,10 +732,10 @@ export default function App() {
       </header>
 
       {/* 메인 컨테이너 */}
-      <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1 flex flex-col items-stretch relative z-10">
+      <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1 flex flex-col items-stretch relative">
         
         {/* 1. 작품 검색 입력 */}
-        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
+        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative z-30`}>
           <div className="flex justify-between items-center">
             <label className={`text-xs font-bold uppercase tracking-wider ${themeStyles.accentText}`}>
               작품 제목 입력
@@ -861,8 +861,8 @@ export default function App() {
           </div>
         </section>
 
-        {/* 2 & 3. 상단 회차 및 분류 구역 */}
-        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
+        {/* 2 & 3. 상단 회차 및 분류 구역 (z-index 확보로 버튼보다 위로 유지) */}
+        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-30`}>
           
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
             <div>
@@ -1064,7 +1064,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* 탭 영역 (숫자 제거, 텍스트만 표시) */}
+          {/* 탭 영역 (숫자 제거) */}
           <div 
             ref={tabsRef}
             onMouseDown={(e) => handleTabStart(e.pageX)}
@@ -1096,7 +1096,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 (모든 분류에 날짜 표시) */}
+          {/* 📋 하단 카드 목록 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1170,7 +1170,7 @@ export default function App() {
                         </div>
                       </div>
                       
-                      {/* 2층: +1 버튼 + 상태 태그 (모든 분류에 날짜 표시 적용) */}
+                      {/* 2층: +1 버튼 + 상태 태그 */}
                       <div className="flex items-center gap-1 w-[160px] justify-end">
                         <button
                           onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
@@ -1216,51 +1216,53 @@ export default function App() {
 
       </main>
 
-      {/* 🚀 액션 버튼 (입력창을 가리지 않도록 화면 우측 하단 고정) */}
+      {/* 🚀 중앙 밀착형 플로팅 액션 버튼 (원래 높이 bottom-[44%]로 완전 복원) */}
       {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
         <aside 
           aria-label="빠른 실행 메뉴"
-          className="fixed right-4 bottom-6 z-50 flex flex-col gap-2 pointer-events-auto"
+          className="fixed left-1/2 -translate-x-1/2 w-full max-w-xl pointer-events-none z-20 bottom-[44%]"
         >
-          {searchState.type === 'NEW_WORK' && (
-            <button
-              type="button"
-              onClick={handleRegister}
-              className={`flex items-center gap-1.5 p-3 sm:px-4 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.secondaryBtn} text-white border-emerald-400/50 shadow-emerald-500/40`}
-              title="신규 등록 (Alt+1)"
-            >
-              <PlusCircle className="w-5 h-5 shrink-0" />
-              <span className="inline">신규 등록</span>
-            </button>
-          )}
+          <div className="flex flex-col items-end gap-2.5 pr-2 sm:pr-0 sm:translate-x-[68px]">
+            {searchState.type === 'NEW_WORK' && (
+              <button
+                type="button"
+                onClick={handleRegister}
+                className={`pointer-events-auto flex items-center gap-1.5 p-3 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.secondaryBtn} text-white border-emerald-400/50 shadow-emerald-500/40`}
+                title="신규 등록 (Alt+1)"
+              >
+                <PlusCircle className="w-5 h-5 shrink-0" />
+                <span className="hidden sm:inline">신규 등록</span>
+              </button>
+            )}
 
-          {searchState.type === 'EXACT_MATCH' && (
-            <button
-              type="button"
-              onClick={handleMoveOrUpdate}
-              className={`flex items-center gap-1.5 p-3 sm:px-4 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.primaryBtn} text-white border-indigo-400/50 shadow-indigo-500/40`}
-              title="이동 / 수정 (Alt+2)"
-            >
-              <ArrowRightLeft className="w-5 h-5 shrink-0" />
-              <span className="inline">이동/수정</span>
-            </button>
-          )}
+            {searchState.type === 'EXACT_MATCH' && (
+              <button
+                type="button"
+                onClick={handleMoveOrUpdate}
+                className={`pointer-events-auto flex items-center gap-1.5 p-3 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.primaryBtn} text-white border-indigo-400/50 shadow-indigo-500/40`}
+                title="이동 / 수정 (Alt+2)"
+              >
+                <ArrowRightLeft className="w-5 h-5 shrink-0" />
+                <span className="hidden sm:inline">이동/수정</span>
+              </button>
+            )}
 
-          {searchState.type === 'EXACT_MATCH' && (
-            <button
-              type="button"
-              onClick={handleDeleteWork}
-              className="flex items-center gap-1.5 p-3 sm:px-4 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border bg-rose-600 hover:bg-rose-700 text-white border-rose-400/50 shadow-rose-500/40"
-              title="데이터베이스에서 완전히 삭제"
-            >
-              <Trash2 className="w-5 h-5 shrink-0" />
-              <span className="inline">삭제</span>
-            </button>
-          )}
+            {searchState.type === 'EXACT_MATCH' && (
+              <button
+                type="button"
+                onClick={handleDeleteWork}
+                className="pointer-events-auto flex items-center gap-1.5 p-3 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border bg-rose-600 hover:bg-rose-700 text-white border-rose-400/50 shadow-rose-500/40"
+                title="데이터베이스에서 완전히 삭제"
+              >
+                <Trash2 className="w-5 h-5 shrink-0" />
+                <span className="hidden sm:inline">삭제</span>
+              </button>
+            )}
+          </div>
         </aside>
       )}
 
-      {/* 📋 토스트 팝업 (포커스를 막지 않도록 pointer-events-none 적용) */}
+      {/* 📋 토스트 팝업 */}
       {toastMessage && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-2xl z-50 flex items-center gap-2 backdrop-blur-sm border border-slate-700 pointer-events-none animate-fade-in">
           <Check className="w-4 h-4 text-emerald-400" />
