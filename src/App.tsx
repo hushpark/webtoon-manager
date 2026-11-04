@@ -430,7 +430,6 @@ export default function App() {
     const myEp = myEpisodeInput !== '' ? Number(myEpisodeInput) : 0;
     const nowIso = new Date().toISOString();
 
-    // 내가 본 회차가 바뀌었을 때만 last_read_at을 갱신
     const hasReadChanged = myEp !== (currentWork.my_episode || 0);
     const nextLastReadAt = hasReadChanged 
       ? nowIso 
@@ -622,7 +621,6 @@ export default function App() {
     return remainingDays;
   };
 
-  // 정렬 로직
   const filteredAndSortedWorks = useMemo(() => {
     const filtered = allWorks.filter((work) => {
       const myEp = work.my_episode || 0;
@@ -652,7 +650,6 @@ export default function App() {
     });
 
     return filtered.sort((a, b) => {
-      // 1. 내가 본 날짜순
       if (sortOption === 'read_desc') {
         const timeA = new Date((a as any).last_read_at || a.updated_at || a.created_at || 0).getTime();
         const timeB = new Date((b as any).last_read_at || b.updated_at || b.created_at || 0).getTime();
@@ -661,9 +658,7 @@ export default function App() {
         const timeA = new Date((a as any).last_read_at || a.updated_at || a.created_at || 0).getTime();
         const timeB = new Date((b as any).last_read_at || b.updated_at || b.created_at || 0).getTime();
         return timeA - timeB;
-      } 
-      // 2. 데이터 저장일순
-      else if (sortOption === 'saved_desc') {
+      } else if (sortOption === 'saved_desc') {
         const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
         const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
         return timeB - timeA;
@@ -671,21 +666,15 @@ export default function App() {
         const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
         const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
         return timeA - timeB;
-      }
-      // 3. 이름순
-      else if (sortOption === 'title_asc') {
+      } else if (sortOption === 'title_asc') {
         return a.title.localeCompare(b.title, 'ko');
       } else if (sortOption === 'title_desc') {
         return b.title.localeCompare(a.title, 'ko');
-      } 
-      // 4. 전체 회차순
-      else if (sortOption === 'ep_desc') {
+      } else if (sortOption === 'ep_desc') {
         return b.episode - a.episode;
       } else if (sortOption === 'ep_asc') {
         return a.episode - b.episode;
-      } 
-      // 5. 점검순
-      else if (sortOption === 'err_my_gt_total') {
+      } else if (sortOption === 'err_my_gt_total') {
         return ((b.my_episode || 0) - b.episode) - ((a.my_episode || 0) - a.episode);
       } else if (sortOption === 'diff_my_lt_total') {
         return (b.episode - (b.my_episode || 0)) - (a.episode - (a.my_episode || 0));
@@ -768,7 +757,7 @@ export default function App() {
       <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1 flex flex-col items-stretch relative">
         
         {/* 1. 작품 검색 입력 */}
-        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative z-30`}>
+        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
           <div className="flex justify-between items-center">
             <label className={`text-xs font-bold uppercase tracking-wider ${themeStyles.accentText}`}>
               작품 제목 입력
@@ -858,6 +847,7 @@ export default function App() {
               </div>
             )}
 
+            {/* TypeScript undefined 에러 방지 처리 (|| '') */}
             {!loading && searchState.type === 'EXACT_MATCH' && (
               <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl text-xs sm:text-sm text-blue-900 space-y-1">
                 <div className="font-extrabold text-blue-700 text-sm sm:text-base flex items-center justify-between">
@@ -869,11 +859,11 @@ export default function App() {
                 
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-blue-800 font-medium pt-0.5">
                   <span>
-                    📌 본 날짜: <strong>{new Date((searchState.work as any).last_read_at || searchState.work.updated_at || searchState.work.created_at).toLocaleDateString()}</strong>
+                    📌 본 날짜: <strong>{new Date((searchState.work as any).last_read_at || searchState.work.updated_at || searchState.work.created_at || '').toLocaleDateString()}</strong>
                   </span>
                   <span className="text-blue-300">|</span>
                   <span>
-                    💾 마지막 저장: <strong>{new Date(searchState.work.updated_at || searchState.work.created_at).toLocaleDateString()}</strong>
+                    💾 마지막 저장: <strong>{new Date(searchState.work.updated_at || searchState.work.created_at || '').toLocaleDateString()}</strong>
                   </span>
                 </div>
 
@@ -901,7 +891,7 @@ export default function App() {
         </section>
 
         {/* 2 & 3. 상단 회차 및 분류 구역 */}
-        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-30`}>
+        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
           
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
             <div>
@@ -1058,7 +1048,7 @@ export default function App() {
           } : {}}
           className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3 sm:p-4 shadow-xl space-y-3 transition-colors`}
         >
-          {/* 상단 드래그 헤더 및 정리된 정렬 드롭다운 메뉴 */}
+          {/* 상단 드래그 헤더 및 정렬 옵션 */}
           <div 
             onMouseDown={(e) => startDraggingBox(e.clientX, e.clientY, e.target as HTMLElement)}
             onTouchStart={(e) => {
@@ -1075,7 +1065,7 @@ export default function App() {
               <span>전체 목록 ({filteredAndSortedWorks.length})</span>
             </span>
 
-            {/* 깔끔하게 재정렬 및 이모지 전면 적용된 셀렉트 박스 */}
+            {/* 정렬 드롭다운 메뉴 (모든 항목 이모지 및 체계적 그룹화) */}
             <div className="flex items-center gap-1 shrink-0">
               <select
                 value={sortOption}
@@ -1265,13 +1255,13 @@ export default function App() {
 
       </main>
 
-      {/* 🚀 중앙 밀착형 플로팅 액션 버튼 */}
+      {/* 🚀 중앙 밀착형 플로팅 액션 버튼 (PC 웹 및 모바일 양쪽 모두 완벽 노출) */}
       {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
         <aside 
           aria-label="빠른 실행 메뉴"
-          className="fixed left-1/2 -translate-x-1/2 w-full max-w-xl pointer-events-none z-20 bottom-[44%]"
+          className="fixed left-1/2 -translate-x-1/2 sm:translate-x-[200px] md:translate-x-[240px] pointer-events-none z-50 bottom-[44%]"
         >
-          <div className="flex flex-col items-end gap-2.5 pr-2 sm:pr-0 sm:translate-x-[68px]">
+          <div className="flex flex-col items-end gap-2.5 pr-2 sm:pr-0">
             {searchState.type === 'NEW_WORK' && (
               <button
                 type="button"
@@ -1280,7 +1270,7 @@ export default function App() {
                 title="신규 등록 (Alt+1)"
               >
                 <PlusCircle className="w-5 h-5 shrink-0" />
-                <span className="hidden sm:inline">신규 등록</span>
+                <span className="inline">신규 등록</span>
               </button>
             )}
 
@@ -1292,7 +1282,7 @@ export default function App() {
                 title="이동 / 수정 (Alt+2)"
               >
                 <ArrowRightLeft className="w-5 h-5 shrink-0" />
-                <span className="hidden sm:inline">이동/수정</span>
+                <span className="inline">이동/수정</span>
               </button>
             )}
 
@@ -1304,7 +1294,7 @@ export default function App() {
                 title="데이터베이스에서 완전히 삭제"
               >
                 <Trash2 className="w-5 h-5 shrink-0" />
-                <span className="hidden sm:inline">삭제</span>
+                <span className="inline">삭제</span>
               </button>
             )}
           </div>
