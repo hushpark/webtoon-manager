@@ -50,10 +50,12 @@ const STATUS_TABS = [
 ];
 
 type SortOption = 
+  | 'read_desc' 
+  | 'read_asc' 
+  | 'saved_desc' 
+  | 'saved_asc' 
   | 'title_asc' 
   | 'title_desc' 
-  | 'date_desc' 
-  | 'date_asc' 
   | 'ep_desc' 
   | 'ep_asc' 
   | 'err_my_gt_total' 
@@ -78,7 +80,7 @@ export default function App() {
   const [allWorks, setAllWorks] = useState<Work[]>([]);
   
   const [activeTab, setActiveTab] = useState<string>('NEW');
-  const [sortOption, setSortOption] = useState<SortOption>('date_desc');
+  const [sortOption, setSortOption] = useState<SortOption>('read_desc');
 
   const [listHeight, setListHeight] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 640) {
@@ -393,7 +395,8 @@ export default function App() {
       status: selectedStatus,
       has_fire_emoji: hasFire,
       created_at: nowIso,
-      updated_at: nowIso
+      updated_at: nowIso,
+      last_read_at: nowIso
     });
 
     if (!error) {
@@ -425,6 +428,13 @@ export default function App() {
 
     const totalEp = episodeInput !== '' ? Number(episodeInput) : currentWork.episode;
     const myEp = myEpisodeInput !== '' ? Number(myEpisodeInput) : 0;
+    const nowIso = new Date().toISOString();
+
+    // 내가 본 회차가 바뀌었을 때만 last_read_at을 갱신
+    const hasReadChanged = myEp !== (currentWork.my_episode || 0);
+    const nextLastReadAt = hasReadChanged 
+      ? nowIso 
+      : ((currentWork as any).last_read_at || currentWork.updated_at || nowIso);
 
     const { error } = await supabase
       .from('works')
@@ -434,7 +444,8 @@ export default function App() {
         status: selectedStatus,
         episode: totalEp,
         my_episode: myEp,
-        updated_at: new Date().toISOString()
+        updated_at: nowIso,
+        last_read_at: nextLastReadAt
       })
       .eq('id', currentWork.id);
 
@@ -474,13 +485,15 @@ export default function App() {
   const handleQuickIncrementMyEpisode = async (work: Work, e: React.MouseEvent) => {
     e.stopPropagation();
     const nextMyEp = (work.my_episode || 0) + 1;
+    const nowIso = new Date().toISOString();
     
     const { error } = await supabase
       .from('works')
       .update({ 
         my_episode: nextMyEp, 
         has_fire_emoji: false,
-        updated_at: new Date().toISOString() 
+        updated_at: nowIso,
+        last_read_at: nowIso
       })
       .eq('id', work.id);
 
@@ -522,6 +535,7 @@ export default function App() {
     lastWheelTimeRef.current = now;
 
     const delta = e.deltaY < 0 ? 1 : -1;
+    const nowIso = new Date().toISOString();
 
     if (type === 'MY') {
       const nextMyEp = Math.max(0, (work.my_episode || 0) + delta);
@@ -530,7 +544,8 @@ export default function App() {
         .update({ 
           my_episode: nextMyEp, 
           has_fire_emoji: false,
-          updated_at: new Date().toISOString() 
+          updated_at: nowIso,
+          last_read_at: nowIso
         })
         .eq('id', work.id);
 
@@ -544,7 +559,7 @@ export default function App() {
         .from('works')
         .update({ 
           episode: nextTotalEp, 
-          updated_at: new Date().toISOString() 
+          updated_at: nowIso 
         })
         .eq('id', work.id);
 
@@ -607,6 +622,7 @@ export default function App() {
     return remainingDays;
   };
 
+  // 정렬 로직
   const filteredAndSortedWorks = useMemo(() => {
     const filtered = allWorks.filter((work) => {
       const myEp = work.my_episode || 0;
@@ -636,23 +652,40 @@ export default function App() {
     });
 
     return filtered.sort((a, b) => {
-      if (sortOption === 'title_asc') {
-        return a.title.localeCompare(b.title, 'ko');
-      } else if (sortOption === 'title_desc') {
-        return b.title.localeCompare(a.title, 'ko');
-      } else if (sortOption === 'date_desc') {
+      // 1. 내가 본 날짜순
+      if (sortOption === 'read_desc') {
+        const timeA = new Date((a as any).last_read_at || a.updated_at || a.created_at || 0).getTime();
+        const timeB = new Date((b as any).last_read_at || b.updated_at || b.created_at || 0).getTime();
+        return timeB - timeA;
+      } else if (sortOption === 'read_asc') {
+        const timeA = new Date((a as any).last_read_at || a.updated_at || a.created_at || 0).getTime();
+        const timeB = new Date((b as any).last_read_at || b.updated_at || b.created_at || 0).getTime();
+        return timeA - timeB;
+      } 
+      // 2. 데이터 저장일순
+      else if (sortOption === 'saved_desc') {
         const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
         const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
         return timeB - timeA;
-      } else if (sortOption === 'date_asc') {
+      } else if (sortOption === 'saved_asc') {
         const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
         const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
         return timeA - timeB;
-      } else if (sortOption === 'ep_desc') {
+      }
+      // 3. 이름순
+      else if (sortOption === 'title_asc') {
+        return a.title.localeCompare(b.title, 'ko');
+      } else if (sortOption === 'title_desc') {
+        return b.title.localeCompare(a.title, 'ko');
+      } 
+      // 4. 전체 회차순
+      else if (sortOption === 'ep_desc') {
         return b.episode - a.episode;
       } else if (sortOption === 'ep_asc') {
         return a.episode - b.episode;
-      } else if (sortOption === 'err_my_gt_total') {
+      } 
+      // 5. 점검순
+      else if (sortOption === 'err_my_gt_total') {
         return ((b.my_episode || 0) - b.episode) - ((a.my_episode || 0) - a.episode);
       } else if (sortOption === 'diff_my_lt_total') {
         return (b.episode - (b.my_episode || 0)) - (a.episode - (a.my_episode || 0));
@@ -826,20 +859,26 @@ export default function App() {
             )}
 
             {!loading && searchState.type === 'EXACT_MATCH' && (
-              <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl text-xs sm:text-sm text-blue-900">
+              <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl text-xs sm:text-sm text-blue-900 space-y-1">
                 <div className="font-extrabold text-blue-700 text-sm sm:text-base flex items-center justify-between">
                   <span className="line-clamp-2 leading-tight">🔎 '{searchState.work.title}'</span>
                   <span className="bg-blue-600 text-white font-bold px-2 py-0.5 rounded text-xs shadow-xs shrink-0 ml-2">
                     현재: {formatStatusLabel(searchState.work.status)}
                   </span>
                 </div>
-                {searchState.work.updated_at && (
-                  <p className="text-[11px] text-blue-700 mt-1 font-medium">
-                    🕒 마지막 기록: {new Date(searchState.work.updated_at).toLocaleDateString()}
-                  </p>
-                )}
-                <p className="text-[11px] text-blue-800 mt-1 flex items-center gap-1 flex-wrap">
-                  <span>제목/회차/관람회차 변경 후</span>
+                
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-blue-800 font-medium pt-0.5">
+                  <span>
+                    📌 본 날짜: <strong>{new Date((searchState.work as any).last_read_at || searchState.work.updated_at || searchState.work.created_at).toLocaleDateString()}</strong>
+                  </span>
+                  <span className="text-blue-300">|</span>
+                  <span>
+                    💾 마지막 저장: <strong>{new Date(searchState.work.updated_at || searchState.work.created_at).toLocaleDateString()}</strong>
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-blue-800 flex items-center gap-1 flex-wrap pt-0.5">
+                  <span>회차/분류 변경 후</span>
                   <kbd className="px-1.5 py-0.2 bg-blue-100 border border-blue-300 rounded text-[10px] font-mono font-bold text-blue-800">Alt+2</kbd>
                   <span>를 누르면 저장됩니다.</span>
                 </p>
@@ -861,7 +900,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* 2 & 3. 상단 회차 및 분류 구역 (z-index 확보로 버튼보다 위로 유지) */}
+        {/* 2 & 3. 상단 회차 및 분류 구역 */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-30`}>
           
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
@@ -1019,7 +1058,7 @@ export default function App() {
           } : {}}
           className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3 sm:p-4 shadow-xl space-y-3 transition-colors`}
         >
-          {/* 상단 드래그 헤더 및 정렬 옵션 */}
+          {/* 상단 드래그 헤더 및 정리된 정렬 드롭다운 메뉴 */}
           <div 
             onMouseDown={(e) => startDraggingBox(e.clientX, e.clientY, e.target as HTMLElement)}
             onTouchStart={(e) => {
@@ -1036,20 +1075,33 @@ export default function App() {
               <span>전체 목록 ({filteredAndSortedWorks.length})</span>
             </span>
 
+            {/* 깔끔하게 재정렬 및 이모지 전면 적용된 셀렉트 박스 */}
             <div className="flex items-center gap-1 shrink-0">
               <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value as SortOption)}
                 className="bg-slate-50 border border-slate-200 text-slate-700 text-[11px] sm:text-xs rounded-lg px-1.5 sm:px-2 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer font-bold shadow-2xs"
               >
-                <option value="date_desc">🕒 마지막 기록 (최신순)</option>
-                <option value="date_asc">🕒 마지막 기록 (오래된순)</option>
-                <option value="title_asc">이름 (ㄱ-ㅎ)</option>
-                <option value="title_desc">이름 (ㅎ-ㄱ)</option>
-                <option value="ep_desc">전체회차 높은순</option>
-                <option value="ep_asc">전체회차 낮은순</option>
-                <option value="err_my_gt_total">🚨 본 회차 초과</option>
-                <option value="diff_my_lt_total">📖 본 회차 미만</option>
+                <optgroup label="── 내가 본 날짜 ──">
+                  <option value="read_desc">📌 최근 본 날짜순 (최신순)</option>
+                  <option value="read_asc">⏳ 오래전 본 날짜순 (오래된순)</option>
+                </optgroup>
+                <optgroup label="── 데이터 저장일 ──">
+                  <option value="saved_desc">💾 최근 저장일순 (최신순)</option>
+                  <option value="saved_asc">🗄️ 오래된 저장일순 (오래된순)</option>
+                </optgroup>
+                <optgroup label="── 작품 이름 ──">
+                  <option value="title_asc">🔤 이름순 (ㄱ-ㅎ)</option>
+                  <option value="title_desc">🔡 이름순 (ㅎ-ㄱ)</option>
+                </optgroup>
+                <optgroup label="── 전체 회차 ──">
+                  <option value="ep_desc">🔼 전체 회차 높은순</option>
+                  <option value="ep_asc">🔽 전체 회차 낮은순</option>
+                </optgroup>
+                <optgroup label="── 데이터 점검 ──">
+                  <option value="err_my_gt_total">🚨 점검: 본 회차 초과</option>
+                  <option value="diff_my_lt_total">📖 점검: 본 회차 미만</option>
+                </optgroup>
               </select>
 
               {position && (
@@ -1096,7 +1148,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 */}
+          {/* 📋 하단 카드 목록 (본 날짜 표시) */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1111,7 +1163,7 @@ export default function App() {
                 const totalEp = work.episode || 0;
                 const isError = myEp > totalEp;
                 const remainingFireDays = getFireRemainingDays(work);
-                const dateInfo = formatWorkDate(work.updated_at || work.created_at);
+                const dateInfo = formatWorkDate((work as any).last_read_at || work.updated_at || work.created_at);
 
                 return (
                   <div 
@@ -1180,10 +1232,7 @@ export default function App() {
                           <Plus className="w-2.5 h-2.5" />1
                         </button>
 
-                        <span 
-                          title={work.updated_at ? `최종 수정: ${new Date(work.updated_at).toLocaleString()}` : ''}
-                          className="flex-1 py-0.5 px-1.5 text-[11px] bg-slate-200/90 text-slate-800 rounded font-bold shrink-0 border border-slate-300/60 text-center truncate flex items-center justify-center gap-1"
-                        >
+                        <span className="flex-1 py-0.5 px-1.5 text-[11px] bg-slate-200/90 text-slate-800 rounded font-bold shrink-0 border border-slate-300/60 text-center truncate flex items-center justify-center gap-1">
                           <span>{formatStatusLabel(work.status)}</span>
                           {dateInfo && (
                             <span className={`text-[10px] font-mono ${dateInfo.isThisYear ? 'text-indigo-700 font-black' : 'text-amber-700 font-bold'}`}>
@@ -1216,7 +1265,7 @@ export default function App() {
 
       </main>
 
-      {/* 🚀 중앙 밀착형 플로팅 액션 버튼 (원래 높이 bottom-[44%]로 완전 복원) */}
+      {/* 🚀 중앙 밀착형 플로팅 액션 버튼 */}
       {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
         <aside 
           aria-label="빠른 실행 메뉴"
