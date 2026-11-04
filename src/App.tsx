@@ -714,7 +714,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-24 transition-colors duration-300 flex flex-col items-center`}>
+    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-36 transition-colors duration-300 flex flex-col items-center`}>
       
       {/* 상단 헤더 */}
       <header className="w-full sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-xs">
@@ -889,7 +889,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* 2 & 3. 상단 회차 및 분류 구역 + 🚀 플로팅 버튼이 바로 옆/위에 밀착 */}
+        {/* 2 & 3. 상단 회차 및 분류 구역 + 🚀 1번: 우측 날개 플로팅 버튼 */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
           
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
@@ -1013,8 +1013,7 @@ export default function App() {
             </div>
           )}
 
-          {/* 🚀 요청하신 위치로 완벽 고정된 플로팅 액션 버튼 */}
-          {/* 웹: 2번째 카드 우측 날개 (보던위치 ~ 시즌완결 중간) | 모바일: 우측 가장자리 밀착 */}
+          {/* 🚀 [1] 2번째 카드 우측 날개 플로팅 버튼 (보던위치 ~ 시즌완결 높이) */}
           {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
             <aside 
               aria-label="빠른 실행 메뉴"
@@ -1298,6 +1297,50 @@ export default function App() {
         </section>
 
       </main>
+
+      {/* 🚀 [2] 완전 복원된 화면 맨 밑바닥 고정 액션 바 (Bottom Action Bar) */}
+      {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
+        <footer 
+          aria-label="화면 하단 고정 메뉴"
+          className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 shadow-2xl flex items-center justify-center"
+        >
+          <div className="w-full max-w-xl flex items-center gap-2">
+            {searchState.type === 'NEW_WORK' && (
+              <button
+                type="button"
+                onClick={handleRegister}
+                className={`flex-1 py-3.5 rounded-xl font-extrabold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 text-white ${themeStyles.secondaryBtn} border border-emerald-400/50`}
+              >
+                <PlusCircle className="w-5 h-5" />
+                <span>신규 등록 완료 (Alt+1)</span>
+              </button>
+            )}
+
+            {searchState.type === 'EXACT_MATCH' && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleMoveOrUpdate}
+                  className={`flex-[2] py-3.5 rounded-xl font-extrabold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 text-white ${themeStyles.primaryBtn} border border-indigo-400/50`}
+                >
+                  <ArrowRightLeft className="w-5 h-5" />
+                  <span>이동 / 수정 저장 (Alt+2)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDeleteWork}
+                  className="px-4 py-3.5 rounded-xl font-extrabold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 text-white bg-rose-600 hover:bg-rose-700 border border-rose-400/50"
+                  title="작품 삭제"
+                >
+                  <Trash2 className="w-5 h-5" />
+                  <span>삭제</span>
+                </button>
+              </>
+            )}
+          </div>
+        </footer>
+      )}
 
       {/* 📋 토스트 팝업 */}
       {toastMessage && (
