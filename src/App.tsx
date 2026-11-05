@@ -807,10 +807,11 @@ export default function App() {
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0">
-                        <div className={`border px-2 py-0.5 rounded text-[11px] font-bold font-mono tabular-nums flex items-center w-[115px] ${getEpisodeBoxStyle(myEp, totalEp)}`}>
-                          <span className={`w-12 text-right font-black ${myEp > totalEp ? 'text-rose-700' : 'text-amber-900'}`}>📌 {myEp}</span>
+                        {/* 📌 검색 목록에서도 {myEp}화 / {totalEp}화 로 통일 */}
+                        <div className={`border px-2 py-0.5 rounded text-[11px] font-bold font-mono tabular-nums flex items-center w-[125px] ${getEpisodeBoxStyle(myEp, totalEp)}`}>
+                          <span className={`w-14 text-right font-black ${myEp > totalEp ? 'text-rose-700' : 'text-amber-900'}`}>📌 {myEp}화</span>
                           <span className="w-3 text-center text-slate-300 font-normal">/</span>
-                          <span className="w-12 text-right text-slate-800">{totalEp}화</span>
+                          <span className="w-14 text-right text-slate-800">{totalEp}화</span>
                         </div>
 
                         <span className="w-16 text-center text-[10px] bg-slate-100 text-slate-700 px-1 py-0.5 rounded font-bold border border-slate-200 truncate whitespace-nowrap">
@@ -889,7 +890,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* 2 & 3. 상단 회차 및 분류 구역 + 🚀 1번: 우측 날개 플로팅 버튼 */}
+        {/* 2 & 3. 상단 회차 및 분류 구역 + 🚀 1번: 2번째 카드 우측 날개 플로팅 버튼 */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
           
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
@@ -1013,7 +1014,7 @@ export default function App() {
             </div>
           )}
 
-          {/* 🚀 [1] 2번째 카드 우측 날개 플로팅 버튼 (보던위치 ~ 시즌완결 높이) */}
+          {/* 🚀 [1] 2번째 카드 우측 날개 플로팅 버튼 */}
           {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
             <aside 
               aria-label="빠른 실행 메뉴"
@@ -1181,7 +1182,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 (본 날짜 표시) */}
+          {/* 📋 하단 카드 목록 (📌 {myEp}화 / {totalEp}화 로 통일) */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1230,7 +1231,7 @@ export default function App() {
                     {/* 오른쪽: 회차 및 상태 버튼 (160px 너비) */}
                     <div className="flex flex-col items-end gap-0.5 shrink-0 whitespace-nowrap my-auto">
                       
-                      {/* 1층: 회차 박스 */}
+                      {/* 1층: 회차 박스 (양쪽에 "화" 완벽 통일) */}
                       <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[160px] justify-between overflow-hidden select-none pointer-events-none ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                         <div 
                           onWheel={(e) => handleListWheel(e, work, 'MY')}
@@ -1238,7 +1239,7 @@ export default function App() {
                           title="마우스 휠로 본 회차 조절 / 클릭 시 상단 편집창 로드"
                         >
                           <span className={`font-black truncate ${isError ? 'text-rose-700' : 'text-amber-900'}`}>
-                            📌 {myEp}
+                            📌 {myEp}화
                           </span>
                         </div>
 
@@ -1298,49 +1299,58 @@ export default function App() {
 
       </main>
 
-      {/* 🚀 [2] 완전 복원된 화면 맨 밑바닥 고정 액션 바 (Bottom Action Bar) */}
-      {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
-        <footer 
-          aria-label="화면 하단 고정 메뉴"
-          className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 shadow-2xl flex items-center justify-center"
-        >
-          <div className="w-full max-w-xl flex items-center gap-2">
-            {searchState.type === 'NEW_WORK' && (
-              <button
-                type="button"
-                onClick={handleRegister}
-                className={`flex-1 py-3.5 rounded-xl font-extrabold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 text-white ${themeStyles.secondaryBtn} border border-emerald-400/50`}
-              >
-                <PlusCircle className="w-5 h-5" />
-                <span>신규 등록 완료 (Alt+1)</span>
-              </button>
-            )}
+      {/* 🚀 [2] 3개 버튼이 항상 상시 고정되어 있고 상태에 따라 색상이 켜지는 하단 바 */}
+      <footer 
+        aria-label="화면 하단 고정 메뉴"
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2.5 sm:px-4 sm:py-3 shadow-2xl flex items-center justify-center"
+      >
+        <div className="w-full max-w-xl grid grid-cols-3 gap-2">
+          {/* 1. 신규 등록 버튼 (NEW_WORK 일 때만 활성화) */}
+          <button
+            type="button"
+            disabled={searchState.type !== 'NEW_WORK'}
+            onClick={handleRegister}
+            className={`py-3 rounded-xl font-extrabold text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-1.5 border ${
+              searchState.type === 'NEW_WORK'
+                ? `${themeStyles.secondaryBtn} text-white border-emerald-400/50 shadow-emerald-500/20 active:scale-95 cursor-pointer`
+                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+            }`}
+          >
+            <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            <span className="truncate">신규 등록</span>
+          </button>
 
-            {searchState.type === 'EXACT_MATCH' && (
-              <>
-                <button
-                  type="button"
-                  onClick={handleMoveOrUpdate}
-                  className={`flex-[2] py-3.5 rounded-xl font-extrabold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 text-white ${themeStyles.primaryBtn} border border-indigo-400/50`}
-                >
-                  <ArrowRightLeft className="w-5 h-5" />
-                  <span>이동 / 수정 저장 (Alt+2)</span>
-                </button>
+          {/* 2. 이동 / 수정 버튼 (EXACT_MATCH 일 때만 활성화) */}
+          <button
+            type="button"
+            disabled={searchState.type !== 'EXACT_MATCH'}
+            onClick={handleMoveOrUpdate}
+            className={`py-3 rounded-xl font-extrabold text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-1.5 border ${
+              searchState.type === 'EXACT_MATCH'
+                ? `${themeStyles.primaryBtn} text-white border-indigo-400/50 shadow-indigo-500/20 active:scale-95 cursor-pointer`
+                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+            }`}
+          >
+            <ArrowRightLeft className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            <span className="truncate">이동/수정</span>
+          </button>
 
-                <button
-                  type="button"
-                  onClick={handleDeleteWork}
-                  className="px-4 py-3.5 rounded-xl font-extrabold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 text-white bg-rose-600 hover:bg-rose-700 border border-rose-400/50"
-                  title="작품 삭제"
-                >
-                  <Trash2 className="w-5 h-5" />
-                  <span>삭제</span>
-                </button>
-              </>
-            )}
-          </div>
-        </footer>
-      )}
+          {/* 3. 삭제 버튼 (EXACT_MATCH 일 때만 활성화) */}
+          <button
+            type="button"
+            disabled={searchState.type !== 'EXACT_MATCH'}
+            onClick={handleDeleteWork}
+            className={`py-3 rounded-xl font-extrabold text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-1.5 border ${
+              searchState.type === 'EXACT_MATCH'
+                ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-400/50 shadow-rose-500/20 active:scale-95 cursor-pointer'
+                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
+            }`}
+          >
+            <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            <span className="truncate">삭제</span>
+          </button>
+        </div>
+      </footer>
 
       {/* 📋 토스트 팝업 */}
       {toastMessage && (
