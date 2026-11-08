@@ -756,7 +756,7 @@ export default function App() {
       {/* 메인 컨테이너 */}
       <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1 flex flex-col items-stretch relative">
         
-        {/* 1. 작품 검색 입력 (z-40 적용으로 아래 카드 위로 드롭다운 목록이 완전 노출) */}
+        {/* 1. 작품 검색 입력 (z-40 지정으로 드롭다운이 아래 카드 위로 정상 노출) */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative z-40`}>
           <div className="flex justify-between items-center">
             <label className={`text-xs font-bold uppercase tracking-wider ${themeStyles.accentText}`}>
@@ -806,11 +806,14 @@ export default function App() {
                         <span className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-2 leading-tight">{work.title}</span>
                       </div>
 
+                      {/* 회차 박스: 모바일은 핀 숨김, PC는 핀 표시, 4자릿수 완벽 지원 */}
                       <div className="flex items-center gap-1 shrink-0">
-                        <div className={`border px-2 py-0.5 rounded text-[11px] font-bold font-mono tabular-nums flex items-center w-[125px] ${getEpisodeBoxStyle(myEp, totalEp)}`}>
-                          <span className={`w-14 text-right font-black ${myEp > totalEp ? 'text-rose-700' : 'text-amber-900'}`}>📌 {myEp}화</span>
-                          <span className="w-3 text-center text-slate-300 font-normal">/</span>
-                          <span className="w-14 text-right text-slate-800">{totalEp}화</span>
+                        <div className={`border px-1.5 py-0.5 rounded text-[11px] font-bold font-mono tabular-nums flex items-center justify-between w-[125px] sm:w-[135px] shrink-0 whitespace-nowrap ${getEpisodeBoxStyle(myEp, totalEp)}`}>
+                          <span className={`flex-1 text-right font-black truncate ${myEp > totalEp ? 'text-rose-700' : 'text-amber-900'}`}>
+                            <span className="hidden sm:inline mr-0.5">📌</span>{myEp}화
+                          </span>
+                          <span className="px-1 text-slate-300 font-normal shrink-0">/</span>
+                          <span className="flex-1 text-left text-slate-800 truncate">{totalEp}화</span>
                         </div>
 
                         <span className="w-16 text-center text-[10px] bg-slate-100 text-slate-700 px-1 py-0.5 rounded font-bold border border-slate-200 truncate whitespace-nowrap">
@@ -889,7 +892,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* 2 & 3. 상단 회차 및 분류 구역 + 🚀 1번: 2번째 카드 우측 날개 플로팅 버튼 */}
+        {/* 2 & 3. 상단 회차 및 분류 구역 + 🚀 [1] 2번째 카드 우측 날개 플로팅 버튼 */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
           
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
