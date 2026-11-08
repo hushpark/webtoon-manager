@@ -785,9 +785,9 @@ export default function App() {
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
-
+            
             {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto">
+              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl z-50 overflow-hidden max-h-[440px] sm:max-h-[480px] overflow-y-auto">            
                 <div className="p-2.5 text-xs font-extrabold text-slate-500 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
                   <span>연관 작품 ({suggestions.length}개)</span>
                   <span className="text-[10px] text-slate-400 font-normal">가나다순 정렬됨</span>
