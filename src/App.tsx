@@ -756,8 +756,8 @@ export default function App() {
       {/* 메인 컨테이너 */}
       <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1 flex flex-col items-stretch relative">
         
-        {/* 1. 작품 검색 입력 */}
-        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
+        {/* 1. 작품 검색 입력 (z-40 적용으로 아래 카드 위로 드롭다운 목록이 완전 노출) */}
+        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative z-40`}>
           <div className="flex justify-between items-center">
             <label className={`text-xs font-bold uppercase tracking-wider ${themeStyles.accentText}`}>
               작품 제목 입력
@@ -807,7 +807,6 @@ export default function App() {
                       </div>
 
                       <div className="flex items-center gap-1 shrink-0">
-                        {/* 📌 검색 목록에서도 {myEp}화 / {totalEp}화 로 통일 */}
                         <div className={`border px-2 py-0.5 rounded text-[11px] font-bold font-mono tabular-nums flex items-center w-[125px] ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                           <span className={`w-14 text-right font-black ${myEp > totalEp ? 'text-rose-700' : 'text-amber-900'}`}>📌 {myEp}화</span>
                           <span className="w-3 text-center text-slate-300 font-normal">/</span>
@@ -1182,7 +1181,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 (📌 {myEp}화 / {totalEp}화 로 통일) */}
+          {/* 📋 하단 카드 목록 (양쪽에 "화" 표기) */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1231,7 +1230,7 @@ export default function App() {
                     {/* 오른쪽: 회차 및 상태 버튼 (160px 너비) */}
                     <div className="flex flex-col items-end gap-0.5 shrink-0 whitespace-nowrap my-auto">
                       
-                      {/* 1층: 회차 박스 (양쪽에 "화" 완벽 통일) */}
+                      {/* 1층: 회차 박스 */}
                       <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[160px] justify-between overflow-hidden select-none pointer-events-none ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                         <div 
                           onWheel={(e) => handleListWheel(e, work, 'MY')}
