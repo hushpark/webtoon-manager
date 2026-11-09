@@ -785,10 +785,11 @@ export default function App() {
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
-            
+
+            {/* 🔍 자동완성 목록: 상단 타이틀 고정(sticky) 및 2번째 카드까지만 덮는 적정 높이 조절 */}
             {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl z-50 overflow-hidden max-h-[440px] sm:max-h-[480px] overflow-y-auto">            
-                <div className="p-2.5 text-xs font-extrabold text-slate-500 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
+              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl z-50 overflow-hidden max-h-[300px] sm:max-h-[320px] overflow-y-auto">
+                <div className="sticky top-0 z-10 p-2.5 text-xs font-extrabold text-slate-500 bg-slate-100 border-b border-slate-200 flex justify-between items-center shadow-xs">
                   <span>연관 작품 ({suggestions.length}개)</span>
                   <span className="text-[10px] text-slate-400 font-normal">가나다순 정렬됨</span>
                 </div>
@@ -806,7 +807,7 @@ export default function App() {
                         <span className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-2 leading-tight">{work.title}</span>
                       </div>
 
-                      {/* 회차 박스: 모바일은 핀 숨김, PC는 핀 표시, 4자릿수 완벽 지원 */}
+                      {/* 회차 박스: 모바일은 핀 숨김, PC는 핀 표시, 4자릿수 줄바꿈 방지 */}
                       <div className="flex items-center gap-1 shrink-0">
                         <div className={`border px-1.5 py-0.5 rounded text-[11px] font-bold font-mono tabular-nums flex items-center justify-between w-[125px] sm:w-[135px] shrink-0 whitespace-nowrap ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                           <span className={`flex-1 text-right font-black truncate ${myEp > totalEp ? 'text-rose-700' : 'text-amber-900'}`}>
