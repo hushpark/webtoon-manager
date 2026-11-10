@@ -756,7 +756,7 @@ export default function App() {
       {/* 메인 컨테이너 */}
       <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1 flex flex-col items-stretch relative">
         
-        {/* 1. 작품 검색 입력 (z-40 지정으로 드롭다운이 아래 카드 위로 정상 노출) */}
+        {/* 1. 작품 검색 입력 */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative z-40`}>
           <div className="flex justify-between items-center">
             <label className={`text-xs font-bold uppercase tracking-wider ${themeStyles.accentText}`}>
@@ -893,7 +893,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* 2 & 3. 상단 회차 및 분류 구역 + 🚀 [1] 2번째 카드 우측 날개 플로팅 버튼 */}
+        {/* 2 & 3. 상단 회차 및 분류 구역 (0 클릭 시 자동 비움 처리 적용) */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
           
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
@@ -907,6 +907,12 @@ export default function App() {
                 inputMode="numeric"
                 pattern="[0-9]*"
                 onWheel={(e) => handleInputWheel(e, 'TOTAL')}
+                onFocus={() => {
+                  if (episodeInput === '0') setEpisodeInput('');
+                }}
+                onBlur={() => {
+                  if (episodeInput.trim() === '') setEpisodeInput('0');
+                }}
                 className="w-full p-2.5 border border-slate-300 rounded-xl font-extrabold text-base bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-400 transition-all cursor-text"
                 placeholder="최신화"
                 value={episodeInput}
@@ -931,6 +937,12 @@ export default function App() {
                 inputMode="numeric"
                 pattern="[0-9]*"
                 onWheel={(e) => handleInputWheel(e, 'MY')}
+                onFocus={() => {
+                  if (myEpisodeInput === '0') setMyEpisodeInput('');
+                }}
+                onBlur={() => {
+                  if (myEpisodeInput.trim() === '') setMyEpisodeInput('0');
+                }}
                 className="w-full p-2.5 border border-amber-500 bg-amber-50/90 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-600 placeholder-amber-400 transition-all cursor-text"
                 placeholder="보던 위치"
                 value={myEpisodeInput}
@@ -1185,7 +1197,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 (양쪽에 "화" 표기) */}
+          {/* 📋 하단 카드 목록 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
