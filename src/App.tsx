@@ -86,12 +86,12 @@ export default function App() {
     if (typeof window !== 'undefined' && window.innerWidth < 640) {
       return 520;
     }
-    return 420;
+    return 340;
   });
 
   const isResizingRef = useRef(false);
   const startYRef = useRef(0);
-  const startHeightRef = useRef(420);
+  const startHeightRef = useRef(340);
 
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
   const isDraggingBoxRef = useRef(false);
@@ -714,7 +714,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${themeStyles.bg} text-slate-800 pb-36 transition-colors duration-300 flex flex-col items-center`}>
+    <div className={`min-h-screen overflow-y-scroll ${themeStyles.bg} text-slate-800 pb-36 transition-colors duration-300 flex flex-col items-center`}>
       
       {/* 상단 헤더 */}
       <header className="w-full sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-xs">
@@ -786,7 +786,7 @@ export default function App() {
               </button>
             )}
 
-            {/* 🔍 자동완성 목록: 상단 타이틀 고정(sticky) 및 2번째 카드까지만 덮는 적정 높이 조절 */}
+            {/* 자동완성 목록 */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl z-50 overflow-hidden max-h-[300px] sm:max-h-[320px] overflow-y-auto">
                 <div className="sticky top-0 z-10 p-2.5 text-xs font-extrabold text-slate-500 bg-slate-100 border-b border-slate-200 flex justify-between items-center shadow-xs">
@@ -807,7 +807,6 @@ export default function App() {
                         <span className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-2 leading-tight">{work.title}</span>
                       </div>
 
-                      {/* 회차 박스: 모바일은 핀 숨김, PC는 핀 표시, 4자릿수 줄바꿈 방지 */}
                       <div className="flex items-center gap-1 shrink-0">
                         <div className={`border px-1.5 py-0.5 rounded text-[11px] font-bold font-mono tabular-nums flex items-center justify-between w-[125px] sm:w-[135px] shrink-0 whitespace-nowrap ${getEpisodeBoxStyle(myEp, totalEp)}`}>
                           <span className={`flex-1 text-right font-black truncate ${myEp > totalEp ? 'text-rose-700' : 'text-amber-900'}`}>
@@ -828,7 +827,8 @@ export default function App() {
             )}
           </div>
 
-          <div>
+          {/* 안내 영역 높이 고정으로 상하 떨림 방지 */}
+          <div className="min-h-[64px] flex flex-col justify-center">
             {loading && (
               <p className={`text-xs font-bold ${themeStyles.accentText} animate-pulse flex items-center gap-1.5 py-1`}>
                 <Sparkles className="w-4 h-4" /> DB 스캔 중입니다...
@@ -836,51 +836,45 @@ export default function App() {
             )}
 
             {!loading && searchState.type === 'IDLE' && (
-              <div className="flex items-center justify-center gap-2 text-xs text-slate-500 py-0.5 flex-wrap font-medium">
+              <div className="flex items-center justify-center gap-2 text-xs text-slate-500 py-2 bg-slate-50/70 rounded-xl border border-slate-100 flex-wrap font-medium">
                 <span className="inline-flex items-center gap-1">
-                  신규: <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono font-bold text-slate-700">Alt+1</kbd>
+                  신규: <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[10px] font-mono font-bold text-slate-700">Alt+1</kbd>
                 </span>
                 <span className="text-slate-300">|</span>
                 <span className="inline-flex items-center gap-1">
-                  수정: <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono font-bold text-slate-700">Alt+2</kbd>
+                  수정: <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[10px] font-mono font-bold text-slate-700">Alt+2</kbd>
                 </span>
                 <span className="text-slate-300">|</span>
                 <span className="inline-flex items-center gap-1">
-                  초기화: <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 rounded text-[10px] font-mono font-bold text-slate-700">Esc</kbd>
+                  초기화: <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[10px] font-mono font-bold text-slate-700">Esc</kbd>
                 </span>
               </div>
             )}
 
             {!loading && searchState.type === 'EXACT_MATCH' && (
-              <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl text-xs sm:text-sm text-blue-900 space-y-1">
-                <div className="font-extrabold text-blue-700 text-sm sm:text-base flex items-center justify-between">
-                  <span className="line-clamp-2 leading-tight">🔎 '{searchState.work.title}'</span>
-                  <span className="bg-blue-600 text-white font-bold px-2 py-0.5 rounded text-xs shadow-xs shrink-0 ml-2">
+              <div className="bg-blue-50 border border-blue-200 p-2.5 rounded-xl text-xs sm:text-sm text-blue-900 space-y-1">
+                <div className="font-extrabold text-blue-700 text-sm flex items-center justify-between">
+                  <span className="truncate leading-tight">🔎 '{searchState.work.title}'</span>
+                  <span className="bg-blue-600 text-white font-bold px-2 py-0.5 rounded text-[11px] shadow-xs shrink-0 ml-2">
                     현재: {formatStatusLabel(searchState.work.status)}
                   </span>
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-blue-800 font-medium pt-0.5">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-blue-800 font-medium">
                   <span>
                     📌 본 날짜: <strong>{new Date((searchState.work as any).last_read_at || searchState.work.updated_at || searchState.work.created_at || '').toLocaleDateString()}</strong>
                   </span>
                   <span className="text-blue-300">|</span>
                   <span>
-                    💾 마지막 저장: <strong>{new Date(searchState.work.updated_at || searchState.work.created_at || '').toLocaleDateString()}</strong>
+                    💾 저장: <strong>{new Date(searchState.work.updated_at || searchState.work.created_at || '').toLocaleDateString()}</strong>
                   </span>
                 </div>
-
-                <p className="text-[11px] text-blue-800 flex items-center gap-1 flex-wrap pt-0.5">
-                  <span>회차/분류 변경 후</span>
-                  <kbd className="px-1.5 py-0.2 bg-blue-100 border border-blue-300 rounded text-[10px] font-mono font-bold text-blue-800">Alt+2</kbd>
-                  <span>를 누르면 저장됩니다.</span>
-                </p>
               </div>
             )}
 
             {!loading && searchState.type === 'NEW_WORK' && (
-              <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs sm:text-sm text-emerald-900">
-                <div className="font-extrabold text-emerald-800 text-sm sm:text-base">
+              <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-xs sm:text-sm text-emerald-900">
+                <div className="font-extrabold text-emerald-800 text-sm">
                   ⭕ 미등록 신규 작품입니다.
                 </div>
                 <p className="text-[11px] text-emerald-700 mt-0.5 flex items-center gap-1">
@@ -893,7 +887,7 @@ export default function App() {
           </div>
         </section>
 
-        {/* 2 & 3. 상단 회차 및 분류 구역 (0 클릭 시 자동 비움 처리 적용) */}
+        {/* 2 & 3. 상단 회차 및 분류 구역 */}
         <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
           
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
@@ -1029,7 +1023,7 @@ export default function App() {
             </div>
           )}
 
-          {/* 🚀 [1] 2번째 카드 우측 날개 플로팅 버튼 */}
+          {/* 우측 날개 플로팅 버튼 */}
           {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
             <aside 
               aria-label="빠른 실행 메뉴"
@@ -1095,7 +1089,7 @@ export default function App() {
           </section>
         )}
 
-        {/* 📚 목록 상자 */}
+        {/* 목록 상자 */}
         <section 
           ref={cardBoxRef}
           style={position ? {
@@ -1165,7 +1159,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* 탭 영역 (숫자 제거) */}
+          {/* 탭 영역 */}
           <div 
             ref={tabsRef}
             onMouseDown={(e) => handleTabStart(e.pageX)}
@@ -1197,7 +1191,7 @@ export default function App() {
             })}
           </div>
 
-          {/* 📋 하단 카드 목록 */}
+          {/* 하단 카드 목록 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
@@ -1314,13 +1308,13 @@ export default function App() {
 
       </main>
 
-      {/* 🚀 [2] 3개 버튼이 항상 상시 고정되어 있고 상태에 따라 색상이 켜지는 하단 바 */}
+      {/* 하단 고정 액션 바 */}
       <footer 
         aria-label="화면 하단 고정 메뉴"
         className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2.5 sm:px-4 sm:py-3 shadow-2xl flex items-center justify-center"
       >
         <div className="w-full max-w-xl grid grid-cols-3 gap-2">
-          {/* 1. 신규 등록 버튼 (NEW_WORK 일 때만 활성화) */}
+          {/* 1. 신규 등록 버튼 */}
           <button
             type="button"
             disabled={searchState.type !== 'NEW_WORK'}
@@ -1335,7 +1329,7 @@ export default function App() {
             <span className="truncate">신규 등록</span>
           </button>
 
-          {/* 2. 이동 / 수정 버튼 (EXACT_MATCH 일 때만 활성화) */}
+          {/* 2. 이동 / 수정 버튼 */}
           <button
             type="button"
             disabled={searchState.type !== 'EXACT_MATCH'}
@@ -1350,7 +1344,7 @@ export default function App() {
             <span className="truncate">이동/수정</span>
           </button>
 
-          {/* 3. 삭제 버튼 (EXACT_MATCH 일 때만 활성화) */}
+          {/* 3. 삭제 버튼 */}
           <button
             type="button"
             disabled={searchState.type !== 'EXACT_MATCH'}
@@ -1367,7 +1361,7 @@ export default function App() {
         </div>
       </footer>
 
-      {/* 📋 토스트 팝업 */}
+      {/* 토스트 팝업 */}
       {toastMessage && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-2xl z-50 flex items-center gap-2 backdrop-blur-sm border border-slate-700 pointer-events-none animate-fade-in">
           <Check className="w-4 h-4 text-emerald-400" />
