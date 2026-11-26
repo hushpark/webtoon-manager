@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { supabase } from './lib/supabase';
 import type { WorkStatus, SearchState, ThemeType, Work } from './types';
 import { THEME_STYLES } from './theme';
@@ -174,6 +174,9 @@ export default function App() {
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const cardBoxRef = useRef<HTMLDivElement>(null);
   const filterPopoverRef = useRef<HTMLDivElement>(null);
+  const filterButtonRef = useRef<HTMLButtonElement>(null);
+  // 필터 팝오버를 화면(viewport) 기준으로 배치하기 위한 좌표
+  const [filterPopoverStyle, setFilterPopoverStyle] = useState<React.CSSProperties | null>(null);
 
   const tabsRef = useRef<HTMLDivElement>(null);
   const isDraggingTabRef = useRef(false);
@@ -198,6 +201,37 @@ export default function App() {
       // ignore storage quota errors
     }
   }, [customFilters]);
+
+  // 필터 버튼 위치를 기준으로 팝오버가 화면 밖으로 나가지 않도록 좌표 계산
+  const updateFilterPopoverPosition = () => {
+    const btn = filterButtonRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const margin = 8;
+    const width = Math.min(vw < 640 ? 310 : 350, vw - margin * 2);
+    // 기본은 버튼 오른쪽 끝에 맞추되, 화면 좌우 끝을 넘지 않도록 보정
+    const left = Math.min(Math.max(rect.right - width, margin), vw - width - margin);
+    const top = rect.bottom + 8;
+    // 하단 고정 바(약 72px)에 가리지 않도록 최대 높이 제한
+    const maxHeight = Math.max(vh - top - 80, 200);
+    setFilterPopoverStyle({ position: 'fixed', left, top, width, maxHeight });
+  };
+
+  useLayoutEffect(() => {
+    if (!isFilterOpen) {
+      setFilterPopoverStyle(null);
+      return;
+    }
+    updateFilterPopoverPosition();
+    window.addEventListener('resize', updateFilterPopoverPosition);
+    window.addEventListener('scroll', updateFilterPopoverPosition, true);
+    return () => {
+      window.removeEventListener('resize', updateFilterPopoverPosition);
+      window.removeEventListener('scroll', updateFilterPopoverPosition, true);
+    };
+  }, [isFilterOpen, position]);
 
   const toggleBuiltInFilter = (key: BuiltInFilterKey) => {
     setBuiltInFilters((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -1493,6 +1527,7 @@ export default function App() {
               {/* [필터] 팝오버 트리거 버튼 (평소 높이를 차지하지 않음) */}
               <div className="relative" ref={filterPopoverRef}>
                 <button
+                  ref={filterButtonRef}
                   type="button"
                   onClick={() => setIsFilterOpen((prev) => !prev)}
                   className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] sm:text-xs font-extrabold border transition-all active:scale-95 cursor-pointer ${
@@ -1514,8 +1549,11 @@ export default function App() {
                 </button>
 
                 {/* 클릭 시 아래로 겹쳐서 열리는 필터 설정 팝오버 */}
-                {isFilterOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-[310px] sm:w-[350px] bg-white border border-slate-300 rounded-2xl shadow-2xl z-50 p-3.5 space-y-3 text-left cursor-default">
+                {isFilterOpen && filterPopoverStyle && (
+                  <div
+                    style={filterPopoverStyle}
+                    className="bg-white border border-slate-300 rounded-2xl shadow-2xl z-50 p-3.5 space-y-3 text-left cursor-default overflow-y-auto overscroll-contain touch-auto"
+                  >
                     <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                       <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
                         <Filter className="w-3.5 h-3.5 text-indigo-600" />
