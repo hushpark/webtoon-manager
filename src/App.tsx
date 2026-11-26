@@ -211,8 +211,10 @@ export default function App() {
     const vh = window.innerHeight;
     const margin = 8;
     const width = Math.min(vw < 640 ? 310 : 350, vw - margin * 2);
-    // 기본은 버튼 오른쪽 끝에 맞추되, 화면 좌우 끝을 넘지 않도록 보정
-    const left = Math.min(Math.max(rect.right - width, margin), vw - width - margin);
+    // 목록 상자(카드)의 가로 중앙에 맞춰 열고, 화면 좌우 끝을 넘지 않도록 보정
+    const cardRect = cardBoxRef.current?.getBoundingClientRect();
+    const centerX = cardRect ? cardRect.left + cardRect.width / 2 : vw / 2;
+    const left = Math.min(Math.max(centerX - width / 2, margin), vw - width - margin);
     const top = rect.bottom + 8;
     // 하단 고정 바(약 72px)에 가리지 않도록 최대 높이 제한
     const maxHeight = Math.max(vh - top - 80, 200);
