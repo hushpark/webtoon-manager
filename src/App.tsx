@@ -24,7 +24,8 @@ import {
   Bookmark,
   FileText,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Filter
 } from 'lucide-react';
 
 const NEW_WORK_STATUS_OPTIONS: WorkStatus[] = [
@@ -55,14 +56,16 @@ const STATUS_TABS = [
 type SortOption = 
   | 'read_desc' 
   | 'read_asc' 
+  | 'unread_desc'
+  | 'unread_asc'
   | 'saved_desc' 
   | 'saved_asc' 
   | 'title_asc' 
   | 'title_desc' 
   | 'ep_desc' 
-  | 'ep_asc' 
-  | 'err_my_gt_total' 
-  | 'diff_my_lt_total';
+  | 'ep_asc';
+
+type FilterChipKey = 'unread' | 'hasMemo' | 'overRead';
 
 export default function App() {
   const [searchInput, setSearchInput] = useState('');
@@ -71,7 +74,7 @@ export default function App() {
   const [episodeInput, setEpisodeInput] = useState<string>('');
   const [myEpisodeInput, setMyEpisodeInput] = useState<string>('');
   const [memoInput, setMemoInput] = useState<string>('');
-  const [isMemoExpanded, setIsMemoExpanded] = useState<boolean>(false); // 상단 비고 인라인 펼침 여부
+  const [isMemoExpanded, setIsMemoExpanded] = useState<boolean>(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading] = useState(false);
@@ -96,6 +99,13 @@ export default function App() {
   
   const [activeTab, setActiveTab] = useState<string>('NEW');
   const [sortOption, setSortOption] = useState<SortOption>('read_desc');
+
+  // 다중 선택 가능한 필터 칩 상태
+  const [activeFilters, setActiveFilters] = useState<Record<FilterChipKey, boolean>>({
+    unread: false,
+    hasMemo: false,
+    overRead: false,
+  });
 
   const [listHeight, setListHeight] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 640) {
@@ -131,6 +141,16 @@ export default function App() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 1500);
   };
+
+  const toggleFilterChip = (key: FilterChipKey) => {
+    setActiveFilters((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const resetFilterChips = () => {
+    setActiveFilters({ unread: false, hasMemo: false, overRead: false });
+  };
+
+  const hasAnyActiveFilter = activeFilters.unread || activeFilters.hasMemo || activeFilters.overRead;
 
   const fetchAllWorks = async () => {
     const { data } = await supabase.from('works').select('*').order('updated_at', { ascending: false });
@@ -490,7 +510,6 @@ export default function App() {
     }
   };
 
-  // 하단 전체 목록에서 [📝] 아이콘 직접 클릭 시 즉시 저장 처리
   const handleSaveQuickMemo = async () => {
     if (!quickMemoModal.targetWork) return;
     const target = quickMemoModal.targetWork;
@@ -677,26 +696,30 @@ export default function App() {
     return remainingDays;
   };
 
+  // 1단계: 탭 + 다중 필터 칩 조합 필터링
+  // 2단계: 1차 정렬 + 2차 보조 자동 다중 정렬
   const filteredAndSortedWorks = useMemo(() => {
     const filtered = allWorks.filter((work) => {
       const myEp = work.my_episode || 0;
       const totalEp = work.episode || 0;
+      const hasMemo = Boolean((work as any).memo && (work as any).memo.trim().length > 0);
 
-      if (sortOption === 'err_my_gt_total') {
+      // 다중 필터 칩 (AND 조건으로 모두 만족하는 작품 필터링)
+      if (activeFilters.unread) {
+        if (myEp >= totalEp) return false;
+      }
+      if (activeFilters.hasMemo) {
+        if (!hasMemo) return false;
+      }
+      if (activeFilters.overRead) {
         if (myEp <= totalEp) return false;
       }
-      else if (sortOption === 'diff_my_lt_total') {
-        if (myEp === 0 || myEp >= totalEp) return false;
-      }
 
+      // 상단 상태 탭 필터
       if (activeTab === 'NEW') {
         const remaining = getFireRemainingDays(work);
         if (remaining === null) return false;
-      }
-      else if (activeTab === 'ALL') {
-        return true;
-      }
-      else {
+      } else if (activeTab !== 'ALL') {
         const targetStatus = activeTab.replace(/\s+/g, '');
         const currentWorkStatus = (work.status || '').replace(/\s+/g, '');
         if (currentWorkStatus !== targetStatus) return false;
@@ -705,39 +728,61 @@ export default function App() {
       return true;
     });
 
+    const getReadTime = (w: Work) => new Date((w as any).last_read_at || w.updated_at || w.created_at || 0).getTime();
+    const getSavedTime = (w: Work) => new Date(w.updated_at || w.created_at || 0).getTime();
+    const getUnreadCount = (w: Work) => (w.episode || 0) - (w.my_episode || 0);
+
     return filtered.sort((a, b) => {
+      let primaryDiff = 0;
+
       if (sortOption === 'read_desc') {
-        const timeA = new Date((a as any).last_read_at || a.updated_at || a.created_at || 0).getTime();
-        const timeB = new Date((b as any).last_read_at || b.updated_at || b.created_at || 0).getTime();
-        return timeB - timeA;
-      } else if (sortOption === 'read_asc') {
-        const timeA = new Date((a as any).last_read_at || a.updated_at || a.created_at || 0).getTime();
-        const timeB = new Date((b as any).last_read_at || b.updated_at || b.created_at || 0).getTime();
-        return timeA - timeB;
-      } else if (sortOption === 'saved_desc') {
-        const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
-        const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
-        return timeB - timeA;
-      } else if (sortOption === 'saved_asc') {
-        const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
-        const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
-        return timeA - timeB;
-      } else if (sortOption === 'title_asc') {
-        return a.title.localeCompare(b.title, 'ko');
-      } else if (sortOption === 'title_desc') {
-        return b.title.localeCompare(a.title, 'ko');
-      } else if (sortOption === 'ep_desc') {
-        return b.episode - a.episode;
-      } else if (sortOption === 'ep_asc') {
-        return a.episode - b.episode;
-      } else if (sortOption === 'err_my_gt_total') {
-        return ((b.my_episode || 0) - b.episode) - ((a.my_episode || 0) - a.episode);
-      } else if (sortOption === 'diff_my_lt_total') {
-        return (b.episode - (b.my_episode || 0)) - (a.episode - (a.my_episode || 0));
+        primaryDiff = getReadTime(b) - getReadTime(a);
+        return primaryDiff !== 0 ? primaryDiff : a.title.localeCompare(b.title, 'ko');
+      } 
+      if (sortOption === 'read_asc') {
+        primaryDiff = getReadTime(a) - getReadTime(b);
+        return primaryDiff !== 0 ? primaryDiff : a.title.localeCompare(b.title, 'ko');
+      } 
+      if (sortOption === 'unread_desc') {
+        // 1차: 안 본 회차 많은순 -> 2차: 최근 본 날짜순 -> 3차: 가나다순
+        primaryDiff = getUnreadCount(b) - getUnreadCount(a);
+        if (primaryDiff !== 0) return primaryDiff;
+        const secondaryDiff = getReadTime(b) - getReadTime(a);
+        return secondaryDiff !== 0 ? secondaryDiff : a.title.localeCompare(b.title, 'ko');
       }
+      if (sortOption === 'unread_asc') {
+        // 1차: 안 본 회차 적은순 -> 2차: 최근 본 날짜순 -> 3차: 가나다순
+        primaryDiff = getUnreadCount(a) - getUnreadCount(b);
+        if (primaryDiff !== 0) return primaryDiff;
+        const secondaryDiff = getReadTime(b) - getReadTime(a);
+        return secondaryDiff !== 0 ? secondaryDiff : a.title.localeCompare(b.title, 'ko');
+      }
+      if (sortOption === 'saved_desc') {
+        primaryDiff = getSavedTime(b) - getSavedTime(a);
+        return primaryDiff !== 0 ? primaryDiff : a.title.localeCompare(b.title, 'ko');
+      } 
+      if (sortOption === 'saved_asc') {
+        primaryDiff = getSavedTime(a) - getSavedTime(b);
+        return primaryDiff !== 0 ? primaryDiff : a.title.localeCompare(b.title, 'ko');
+      } 
+      if (sortOption === 'title_asc') {
+        return a.title.localeCompare(b.title, 'ko');
+      } 
+      if (sortOption === 'title_desc') {
+        return b.title.localeCompare(a.title, 'ko');
+      } 
+      if (sortOption === 'ep_desc') {
+        primaryDiff = (b.episode || 0) - (a.episode || 0);
+        return primaryDiff !== 0 ? primaryDiff : a.title.localeCompare(b.title, 'ko');
+      } 
+      if (sortOption === 'ep_asc') {
+        primaryDiff = (a.episode || 0) - (b.episode || 0);
+        return primaryDiff !== 0 ? primaryDiff : a.title.localeCompare(b.title, 'ko');
+      }
+
       return 0;
     });
-  }, [allWorks, activeTab, sortOption]);
+  }, [allWorks, activeTab, sortOption, activeFilters]);
 
   const formatStatusLabel = (status?: string) => {
     if (!status) return '기타';
@@ -809,7 +854,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* 메인 컨테이너 (웹·모바일 모두 중앙 1열 유지로 우측 플로팅 버튼 겹침 제로) */}
+      {/* 메인 컨테이너 */}
       <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1 flex flex-col items-stretch relative">
         
         {/* 1. 작품 검색 입력 */}
@@ -1003,7 +1048,7 @@ export default function App() {
               </div>
             )}
 
-            {/* 🔽 [비고] 버튼 클릭 시 바로 아래 펼쳐지는 인라인 메모 입력창 */}
+            {/* [비고] 버튼 클릭 시 바로 아래 펼쳐지는 인라인 메모 입력창 */}
             {isMemoExpanded && (
               <div className="bg-amber-50/70 border border-amber-300 rounded-xl p-2.5 space-y-1.5 animate-fade-in">
                 <div className="flex items-center justify-between">
@@ -1260,9 +1305,9 @@ export default function App() {
             maxWidth: '576px',
             zIndex: 30
           } : {}}
-          className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3 sm:p-4 shadow-xl space-y-3 transition-colors`}
+          className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3 sm:p-4 shadow-xl space-y-2.5 transition-colors`}
         >
-          {/* 상단 드래그 헤더 및 정렬 옵션 */}
+          {/* 상단 드래그 헤더 및 1차/2차 스마트 정렬 옵션 */}
           <div 
             onMouseDown={(e) => startDraggingBox(e.clientX, e.clientY, e.target as HTMLElement)}
             onTouchStart={(e) => {
@@ -1284,10 +1329,15 @@ export default function App() {
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value as SortOption)}
                 className="bg-slate-50 border border-slate-200 text-slate-700 text-[11px] sm:text-xs rounded-lg px-1.5 sm:px-2 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer font-bold shadow-2xs"
+                title="동점일 경우 최근 본 날짜 및 가나다순으로 2차 자동 정렬됩니다"
               >
                 <optgroup label="── 내가 본 날짜 ──">
                   <option value="read_desc">📌 최근 본 날짜순 (최신순)</option>
                   <option value="read_asc">⏳ 오래전 본 날짜순 (오래된순)</option>
+                </optgroup>
+                <optgroup label="── 미열람 회차 (2차: 최근순) ──">
+                  <option value="unread_desc">📉 안 본 회차 많은순</option>
+                  <option value="unread_asc">📈 안 본 회차 적은순</option>
                 </optgroup>
                 <optgroup label="── 데이터 저장일 ──">
                   <option value="saved_desc">💾 최근 저장일순 (최신순)</option>
@@ -1300,10 +1350,6 @@ export default function App() {
                 <optgroup label="── 전체 회차 ──">
                   <option value="ep_desc">🔼 전체 회차 높은순</option>
                   <option value="ep_asc">🔽 전체 회차 낮은순</option>
-                </optgroup>
-                <optgroup label="── 데이터 점검 ──">
-                  <option value="err_my_gt_total">🚨 점검: 본 회차 초과</option>
-                  <option value="diff_my_lt_total">📖 점검: 본 회차 미만</option>
                 </optgroup>
               </select>
 
@@ -1319,7 +1365,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* 탭 영역 */}
+          {/* 상태 탭 영역 */}
           <div 
             ref={tabsRef}
             onMouseDown={(e) => handleTabStart(e.pageX)}
@@ -1351,14 +1397,70 @@ export default function App() {
             })}
           </div>
 
-          {/* 하단 카드 목록 (높이 고정 + 우측 비고 아이콘 별도 터치 영역) */}
+          {/* 다중 선택 가능한 조건 필터 칩 바 */}
+          <div className="flex items-center justify-between gap-1.5 pt-0.5 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 mr-0.5">
+                <Filter className="w-3 h-3" />
+                <span>필터</span>
+              </span>
+
+              <button
+                type="button"
+                onClick={() => toggleFilterChip('unread')}
+                className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-all active:scale-95 flex items-center gap-1 ${
+                  activeFilters.unread
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <span>📖 안 본 회차</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleFilterChip('hasMemo')}
+                className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-all active:scale-95 flex items-center gap-1 ${
+                  activeFilters.hasMemo
+                    ? 'bg-amber-500 text-white border-amber-500 shadow-2xs'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <span>📝 비고 있음</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => toggleFilterChip('overRead')}
+                className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-all active:scale-95 flex items-center gap-1 ${
+                  activeFilters.overRead
+                    ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                <span>🚨 회차 초과</span>
+              </button>
+            </div>
+
+            {hasAnyActiveFilter && (
+              <button
+                type="button"
+                onClick={resetFilterChips}
+                className="text-[11px] font-bold text-slate-400 hover:text-slate-700 px-1.5 py-0.5 rounded hover:bg-slate-100 transition-colors"
+              >
+                초기화
+              </button>
+            )}
+          </div>
+
+          {/* 하단 카드 목록 */}
           <div 
             style={{ height: `${listHeight}px` }} 
             className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
           >
             {filteredAndSortedWorks.length === 0 ? (
               <div className="p-4 text-center text-xs text-slate-400 italic">
-                해당하는 작품이 없습니다.
+                조건에 해당하는 작품이 없습니다.
               </div>
             ) : (
               filteredAndSortedWorks.map((work) => {
@@ -1494,7 +1596,7 @@ export default function App() {
 
       </main>
 
-      {/* 📋 하단 전체 목록에서 [📝] 아이콘 직접 터치 시 열리는 즉시 수정 팝업 */}
+      {/* 하단 전체 목록에서 [📝] 아이콘 직접 터치 시 열리는 즉시 수정 팝업 */}
       {quickMemoModal.isOpen && (
         <div 
           onClick={() => setQuickMemoModal((prev) => ({ ...prev, isOpen: false }))}
