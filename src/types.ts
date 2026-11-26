@@ -22,6 +22,7 @@ export interface Work {
   has_fire_emoji?: boolean;
   created_at?: string;
   updated_at?: string;
+  memo?: string | null;
 }
 
 export type SearchState = 
