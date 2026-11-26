@@ -20,9 +20,9 @@ export interface Work {
   my_episode?: number;
   status: WorkStatus;
   has_fire_emoji?: boolean;
+  memo?: string | null;
   created_at?: string;
   updated_at?: string;
-  memo?: string | null;
 }
 
 export type SearchState = 
