@@ -22,7 +22,9 @@ import {
   GripHorizontal,
   Move,
   Bookmark,
-  FileText
+  FileText,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 const NEW_WORK_STATUS_OPTIONS: WorkStatus[] = [
@@ -69,21 +71,20 @@ export default function App() {
   const [episodeInput, setEpisodeInput] = useState<string>('');
   const [myEpisodeInput, setMyEpisodeInput] = useState<string>('');
   const [memoInput, setMemoInput] = useState<string>('');
+  const [isMemoExpanded, setIsMemoExpanded] = useState<boolean>(false); // 상단 비고 인라인 펼침 여부
   const [logs, setLogs] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loading] = useState(false);
   
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // 비고(메모) 팝업 모달 상태 (모바일 및 목록 아이콘 직접 터치용)
-  const [memoModal, setMemoModal] = useState<{
+  // 하단 전체 목록에서 [📝] 아이콘을 직접 터치했을 때 열리는 즉시 수정 팝업
+  const [quickMemoModal, setQuickMemoModal] = useState<{
     isOpen: boolean;
-    mode: 'EDITOR' | 'QUICK_LIST'; // EDITOR: 상단 편집창 연동, QUICK_LIST: 목록에서 즉시 저장
     targetWork?: Work;
     text: string;
   }>({
     isOpen: false,
-    mode: 'EDITOR',
     text: ''
   });
 
@@ -115,7 +116,6 @@ export default function App() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const cardBoxRef = useRef<HTMLDivElement>(null);
-  const desktopMemoRef = useRef<HTMLTextAreaElement>(null);
 
   const tabsRef = useRef<HTMLDivElement>(null);
   const isDraggingTabRef = useRef(false);
@@ -153,9 +153,9 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (memoModal.isOpen) {
+      if (quickMemoModal.isOpen) {
         if (e.key === 'Escape') {
-          setMemoModal((prev) => ({ ...prev, isOpen: false }));
+          setQuickMemoModal((prev) => ({ ...prev, isOpen: false }));
         }
         return;
       }
@@ -172,7 +172,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchState, selectedStatus, episodeInput, myEpisodeInput, memoInput, searchInput, memoModal.isOpen]);
+  }, [searchState, selectedStatus, episodeInput, myEpisodeInput, memoInput, searchInput, quickMemoModal.isOpen]);
 
   useEffect(() => {
     const handleMove = (clientY: number, clientX: number) => {
@@ -267,6 +267,7 @@ export default function App() {
     setEpisodeInput('');
     setMyEpisodeInput('');
     setMemoInput('');
+    setIsMemoExpanded(false);
     setErrorMessage(null);
     if (searchInputRef.current) searchInputRef.current.focus();
   };
@@ -283,6 +284,7 @@ export default function App() {
       setEpisodeInput('');
       setMyEpisodeInput('');
       setMemoInput('');
+      setIsMemoExpanded(false);
       return;
     }
 
@@ -488,33 +490,26 @@ export default function App() {
     }
   };
 
-  // 비고 팝업 확인/즉시 저장 처리
-  const handleConfirmMemoModal = async () => {
-    const trimmedMemo = memoModal.text.trim();
+  // 하단 전체 목록에서 [📝] 아이콘 직접 클릭 시 즉시 저장 처리
+  const handleSaveQuickMemo = async () => {
+    if (!quickMemoModal.targetWork) return;
+    const target = quickMemoModal.targetWork;
+    const trimmedMemo = quickMemoModal.text.trim();
 
-    if (memoModal.mode === 'EDITOR') {
-      // 상단 편집창에서 열었을 때는 입력 상태에 반영 (이후 신규 등록 또는 이동/수정 시 DB 반영)
-      setMemoInput(trimmedMemo);
-      setMemoModal((prev) => ({ ...prev, isOpen: false }));
-      showToast('📝 비고가 임시 반영되었습니다. (저장 버튼을 눌러 완료)');
-    } else if (memoModal.mode === 'QUICK_LIST' && memoModal.targetWork) {
-      // 목록에서 아이콘을 직접 눌러 열었을 때는 즉시 DB 저장
-      const target = memoModal.targetWork;
-      const { error } = await supabase
-        .from('works')
-        .update({ memo: trimmedMemo || null })
-        .eq('id', target.id);
+    const { error } = await supabase
+      .from('works')
+      .update({ memo: trimmedMemo || null })
+      .eq('id', target.id);
 
-      if (!error) {
-        fetchAllWorks();
-        if (searchState.type === 'EXACT_MATCH' && searchState.work.id === target.id) {
-          setMemoInput(trimmedMemo);
-        }
-        setMemoModal((prev) => ({ ...prev, isOpen: false }));
-        showToast(`📝 '${target.title}' 비고 저장 완료`);
-      } else {
-        setErrorMessage('비고 저장에 실패했습니다.');
+    if (!error) {
+      fetchAllWorks();
+      if (searchState.type === 'EXACT_MATCH' && searchState.work.id === target.id) {
+        setMemoInput(trimmedMemo);
       }
+      setQuickMemoModal((prev) => ({ ...prev, isOpen: false }));
+      showToast(`📝 '${target.title}' 비고 저장 완료`);
+    } else {
+      setErrorMessage('비고 저장에 실패했습니다.');
     }
   };
 
@@ -814,99 +809,98 @@ export default function App() {
         </div>
       </header>
 
-      {/* 메인 레이아웃 래퍼: 넓은 화면(lg 이상)에서는 중앙 컬럼 + 우측 비고 사이드 카드 나란히 배치 */}
-      <div className="w-full max-w-5xl mx-auto p-3.5 sm:p-6 flex-1 flex flex-col lg:flex-row lg:items-start lg:justify-center gap-6 relative">
+      {/* 메인 컨테이너 (웹·모바일 모두 중앙 1열 유지로 우측 플로팅 버튼 겹침 제로) */}
+      <main className="w-full max-w-xl mx-auto p-3.5 sm:p-6 space-y-4 flex-1 flex flex-col items-stretch relative">
         
-        {/* 중앙 메인 컬럼 */}
-        <main className="w-full max-w-xl mx-auto lg:mx-0 space-y-4 flex-1 flex flex-col items-stretch relative">
-          
-          {/* 1. 작품 검색 입력 */}
-          <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative z-40`}>
-            <div className="flex justify-between items-center">
-              <label className={`text-xs font-bold uppercase tracking-wider ${themeStyles.accentText}`}>
-                작품 제목 입력
-              </label>
-              <span className="text-[11px] text-slate-400">타이핑 시 자동완성</span>
-            </div>
+        {/* 1. 작품 검색 입력 */}
+        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3 transition-colors relative z-40`}>
+          <div className="flex justify-between items-center">
+            <label className={`text-xs font-bold uppercase tracking-wider ${themeStyles.accentText}`}>
+              작품 제목 입력
+            </label>
+            <span className="text-[11px] text-slate-400">타이핑 시 자동완성</span>
+          </div>
 
-            <div className="relative" ref={searchBoxRef}>
-              <input
-                ref={searchInputRef}
-                type="text"
-                className="w-full pl-11 pr-10 py-3.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-slate-200 transition-all"
-                placeholder="작품 제목을 입력하세요..."
-                value={searchInput}
-                onChange={(e) => handleInputChange(e.target.value)}
-                onFocus={() => searchInput.trim() && setShowSuggestions(true)}
-                onKeyDown={(e) => e.key === 'Enter' && executeSearch(searchInput)}
-              />
-              <Search className={`w-5 h-5 ${themeStyles.accentText} absolute left-3.5 top-4`} />
-              {searchInput && (
-                <button 
-                  onClick={handleReset} 
-                  className="absolute right-3.5 top-3.5 p-1 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
+          <div className="relative" ref={searchBoxRef}>
+            <input
+              ref={searchInputRef}
+              type="text"
+              className="w-full pl-11 pr-10 py-3.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-slate-200 transition-all"
+              placeholder="작품 제목을 입력하세요..."
+              value={searchInput}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onFocus={() => searchInput.trim() && setShowSuggestions(true)}
+              onKeyDown={(e) => e.key === 'Enter' && executeSearch(searchInput)}
+            />
+            <Search className={`w-5 h-5 ${themeStyles.accentText} absolute left-3.5 top-4`} />
+            {searchInput && (
+              <button 
+                onClick={handleReset} 
+                className="absolute right-3.5 top-3.5 p-1 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
 
-              {/* 자동완성 목록 */}
-              {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl z-50 overflow-hidden max-h-[300px] sm:max-h-[320px] overflow-y-auto">
-                  <div className="sticky top-0 z-10 p-2.5 text-xs font-extrabold text-slate-500 bg-slate-100 border-b border-slate-200 flex justify-between items-center shadow-xs">
-                    <span>연관 작품 ({suggestions.length}개)</span>
-                    <span className="text-[10px] text-slate-400 font-normal">가나다순 정렬됨</span>
-                  </div>
-                  {suggestions.map((work) => {
-                    const myEp = work.my_episode || 0;
-                    const totalEp = work.episode || 0;
-                    const hasMemo = Boolean((work as any).memo && (work as any).memo.trim().length > 0);
-                    return (
-                      <div
-                        key={work.id}
-                        onClick={() => handleSelectSuggestion(work)}
-                        className="p-3 hover:bg-indigo-50/90 cursor-pointer border-b border-slate-100 last:border-none flex items-center justify-between transition-colors gap-1.5"
-                      >
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-2 leading-tight">{work.title}</span>
-                          {hasMemo && (
-                            <span className="text-[10px] bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-bold shrink-0" title="비고 있음">
-                              📝
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1 shrink-0">
-                          <div className={`border px-1.5 py-0.5 rounded text-[11px] font-bold font-mono tabular-nums flex items-center justify-between w-[125px] sm:w-[135px] shrink-0 whitespace-nowrap ${getEpisodeBoxStyle(myEp, totalEp)}`}>
-                            <span className={`flex-1 text-right font-black truncate ${myEp > totalEp ? 'text-rose-700' : 'text-amber-900'}`}>
-                              <span className="hidden sm:inline mr-0.5">📌</span>{myEp}화
-                            </span>
-                            <span className="px-1 text-slate-300 font-normal shrink-0">/</span>
-                            <span className="flex-1 text-left text-slate-800 truncate">{totalEp}화</span>
-                          </div>
-
-                          <span className="w-16 text-center text-[10px] bg-slate-100 text-slate-700 px-1 py-0.5 rounded font-bold border border-slate-200 truncate whitespace-nowrap">
-                            {formatStatusLabel(work.status)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+            {/* 자동완성 목록 */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-300 rounded-xl shadow-2xl z-50 overflow-hidden max-h-[300px] sm:max-h-[320px] overflow-y-auto">
+                <div className="sticky top-0 z-10 p-2.5 text-xs font-extrabold text-slate-500 bg-slate-100 border-b border-slate-200 flex justify-between items-center shadow-xs">
+                  <span>연관 작품 ({suggestions.length}개)</span>
+                  <span className="text-[10px] text-slate-400 font-normal">가나다순 정렬됨</span>
                 </div>
-              )}
-            </div>
+                {suggestions.map((work) => {
+                  const myEp = work.my_episode || 0;
+                  const totalEp = work.episode || 0;
+                  const hasMemo = Boolean((work as any).memo && (work as any).memo.trim().length > 0);
+                  return (
+                    <div
+                      key={work.id}
+                      onClick={() => handleSelectSuggestion(work)}
+                      className="p-3 hover:bg-indigo-50/90 cursor-pointer border-b border-slate-100 last:border-none flex items-center justify-between transition-colors gap-1.5"
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-2 leading-tight">{work.title}</span>
+                        {hasMemo && (
+                          <span className="text-[10px] bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-bold shrink-0" title="비고 있음">
+                            📝
+                          </span>
+                        )}
+                      </div>
 
-            {/* 안내 영역 (작은 화면에서는 우측에 [📝 비고] 버튼 배치) */}
-            <div className="min-h-[64px] flex flex-col justify-center">
-              {loading && (
-                <p className={`text-xs font-bold ${themeStyles.accentText} animate-pulse flex items-center gap-1.5 py-1`}>
-                  <Sparkles className="w-4 h-4" /> DB 스캔 중입니다...
-                </p>
-              )}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <div className={`border px-1.5 py-0.5 rounded text-[11px] font-bold font-mono tabular-nums flex items-center justify-between w-[125px] sm:w-[135px] shrink-0 whitespace-nowrap ${getEpisodeBoxStyle(myEp, totalEp)}`}>
+                          <span className={`flex-1 text-right font-black truncate ${myEp > totalEp ? 'text-rose-700' : 'text-amber-900'}`}>
+                            <span className="hidden sm:inline mr-0.5">📌</span>{myEp}화
+                          </span>
+                          <span className="px-1 text-slate-300 font-normal shrink-0">/</span>
+                          <span className="flex-1 text-left text-slate-800 truncate">{totalEp}화</span>
+                        </div>
 
-              {!loading && searchState.type === 'IDLE' && (
-                <div className="flex items-center justify-center gap-2 text-xs text-slate-500 py-2 bg-slate-50/70 rounded-xl border border-slate-100 flex-wrap font-medium">
+                        <span className="w-16 text-center text-[10px] bg-slate-100 text-slate-700 px-1 py-0.5 rounded font-bold border border-slate-200 truncate whitespace-nowrap">
+                          {formatStatusLabel(work.status)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 상태 안내 영역 + [📝 비고] 인라인 토글 버튼 및 펼쳐지는 메모 입력창 */}
+          <div className="min-h-[64px] flex flex-col justify-center space-y-2">
+            {loading && (
+              <p className={`text-xs font-bold ${themeStyles.accentText} animate-pulse flex items-center gap-1.5 py-1`}>
+                <Sparkles className="w-4 h-4" /> DB 스캔 중입니다...
+              </p>
+            )}
+
+            {/* 1) 기본 대기 상태 (IDLE): 단축키 안내 + [📝 비고] 버튼 */}
+            {!loading && searchState.type === 'IDLE' && (
+              <div className="flex items-center justify-between gap-2 text-xs text-slate-500 px-3 py-2 bg-slate-50/70 rounded-xl border border-slate-100 font-medium">
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap flex-1">
                   <span className="inline-flex items-center gap-1">
                     신규: <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[10px] font-mono font-bold text-slate-700">Alt+1</kbd>
                   </span>
@@ -919,591 +913,591 @@ export default function App() {
                     초기화: <kbd className="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[10px] font-mono font-bold text-slate-700">Esc</kbd>
                   </span>
                 </div>
-              )}
 
-              {!loading && searchState.type === 'EXACT_MATCH' && (
-                <div className="bg-blue-50 border border-blue-200 p-2.5 rounded-xl text-xs sm:text-sm text-blue-900 space-y-1">
-                  <div className="font-extrabold text-blue-700 text-sm flex items-center justify-between gap-2">
-                    <span className="truncate leading-tight">🔎 '{searchState.work.title}'</span>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {/* 작은 화면(lg 미만)에서만 보이는 상단 비고 버튼 */}
-                      <button
-                        type="button"
-                        onClick={() => setMemoModal({
-                          isOpen: true,
-                          mode: 'EDITOR',
-                          targetWork: searchState.work,
-                          text: memoInput
-                        })}
-                        className={`lg:hidden relative inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-extrabold border transition-all active:scale-95 ${
-                          memoInput.trim()
-                            ? 'bg-amber-100 text-amber-900 border-amber-400 shadow-2xs'
-                            : 'bg-white text-slate-700 border-blue-300 hover:bg-blue-100'
-                        }`}
-                        title="작품 비고(메모) 열기"
-                      >
-                        <FileText className="w-3 h-3" />
-                        <span>비고</span>
-                        {memoInput.trim() && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                        )}
-                      </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMemoExpanded((prev) => !prev)}
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-extrabold border transition-all shrink-0 active:scale-95 ${
+                    isMemoExpanded || memoInput.trim()
+                      ? 'bg-amber-100 text-amber-900 border-amber-300'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                  }`}
+                  title="비고(메모) 입력창 열기/닫기"
+                >
+                  <FileText className="w-3 h-3" />
+                  <span>비고</span>
+                  {isMemoExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+              </div>
+            )}
 
-                      <span className="bg-blue-600 text-white font-bold px-2 py-0.5 rounded text-[11px] shadow-xs">
-                        현재: {formatStatusLabel(searchState.work.status)}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-blue-800 font-medium">
-                    <span>
-                      📌 본 날짜: <strong>{new Date((searchState.work as any).last_read_at || searchState.work.updated_at || searchState.work.created_at || '').toLocaleDateString()}</strong>
-                    </span>
-                    <span className="text-blue-300">|</span>
-                    <span>
-                      💾 저장: <strong>{new Date(searchState.work.updated_at || searchState.work.created_at || '').toLocaleDateString()}</strong>
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {!loading && searchState.type === 'NEW_WORK' && (
-                <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-xs sm:text-sm text-emerald-900">
-                  <div className="font-extrabold text-emerald-800 text-sm flex items-center justify-between gap-2">
-                    <span>⭕ 미등록 신규 작품입니다.</span>
-                    {/* 작은 화면(lg 미만)에서 신규 작품 비고 입력 버튼 */}
+            {/* 2) 기존 작품 선택 상태 (EXACT_MATCH) */}
+            {!loading && searchState.type === 'EXACT_MATCH' && (
+              <div className="bg-blue-50 border border-blue-200 p-2.5 rounded-xl text-xs sm:text-sm text-blue-900 space-y-1">
+                <div className="font-extrabold text-blue-700 text-sm flex items-center justify-between gap-2">
+                  <span className="truncate leading-tight">🔎 '{searchState.work.title}'</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
-                      onClick={() => setMemoModal({
-                        isOpen: true,
-                        mode: 'EDITOR',
-                        text: memoInput
-                      })}
-                      className={`lg:hidden relative inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-extrabold border transition-all active:scale-95 ${
-                        memoInput.trim()
+                      onClick={() => setIsMemoExpanded((prev) => !prev)}
+                      className={`relative inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-extrabold border transition-all active:scale-95 ${
+                        isMemoExpanded || memoInput.trim()
                           ? 'bg-amber-100 text-amber-900 border-amber-400 shadow-2xs'
-                          : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                          : 'bg-white text-slate-700 border-blue-300 hover:bg-blue-100'
                       }`}
+                      title="비고(메모) 열기/닫기"
                     >
                       <FileText className="w-3 h-3" />
                       <span>비고</span>
                       {memoInput.trim() && (
                         <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                       )}
+                      {isMemoExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </button>
+
+                    <span className="bg-blue-600 text-white font-bold px-2 py-0.5 rounded text-[11px] shadow-xs">
+                      현재: {formatStatusLabel(searchState.work.status)}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-blue-800 font-medium">
+                  <span>
+                    📌 본 날짜: <strong>{new Date((searchState.work as any).last_read_at || searchState.work.updated_at || searchState.work.created_at || '').toLocaleDateString()}</strong>
+                  </span>
+                  <span className="text-blue-300">|</span>
+                  <span>
+                    💾 저장: <strong>{new Date(searchState.work.updated_at || searchState.work.created_at || '').toLocaleDateString()}</strong>
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* 3) 신규 작품 입력 상태 (NEW_WORK) */}
+            {!loading && searchState.type === 'NEW_WORK' && (
+              <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-xs sm:text-sm text-emerald-900">
+                <div className="font-extrabold text-emerald-800 text-sm flex items-center justify-between gap-2">
+                  <span>⭕ 미등록 신규 작품입니다.</span>
+                  <button
+                    type="button"
+                    onClick={() => setIsMemoExpanded((prev) => !prev)}
+                    className={`relative inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-extrabold border transition-all active:scale-95 ${
+                      isMemoExpanded || memoInput.trim()
+                        ? 'bg-amber-100 text-amber-900 border-amber-400 shadow-2xs'
+                        : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                    }`}
+                  >
+                    <FileText className="w-3 h-3" />
+                    <span>비고</span>
+                    {memoInput.trim() && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    )}
+                    {isMemoExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-emerald-700 mt-0.5 flex items-center gap-1">
+                  <span>회차 및 분류 선택 후</span>
+                  <kbd className="px-1.5 py-0.2 bg-emerald-100 border border-emerald-300 rounded text-[10px] font-mono font-bold text-emerald-800">Alt+1</kbd>
+                  <span>을 누르세요.</span>
+                </p>
+              </div>
+            )}
+
+            {/* 🔽 [비고] 버튼 클릭 시 바로 아래 펼쳐지는 인라인 메모 입력창 */}
+            {isMemoExpanded && (
+              <div className="bg-amber-50/70 border border-amber-300 rounded-xl p-2.5 space-y-1.5 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold text-amber-900 flex items-center gap-1">
+                    <FileText className="w-3.5 h-3.5 text-amber-600" />
+                    <span>작품 비고 (메모)</span>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {memoInput.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => setMemoInput('')}
+                        className="text-[10px] text-slate-500 hover:text-rose-600 font-bold"
+                      >
+                        비우기
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsMemoExpanded(false)}
+                      className="text-[10px] text-amber-800 hover:text-amber-950 font-extrabold px-1.5 py-0.5 bg-amber-200/70 rounded"
+                    >
+                      접기
                     </button>
                   </div>
-                  <p className="text-[11px] text-emerald-700 mt-0.5 flex items-center gap-1">
-                    <span>회차 및 분류 선택 후</span>
-                    <kbd className="px-1.5 py-0.2 bg-emerald-100 border border-emerald-300 rounded text-[10px] font-mono font-bold text-emerald-800">Alt+1</kbd>
-                    <span>을 누르세요.</span>
-                  </p>
                 </div>
-              )}
-            </div>
-          </section>
-
-          {/* 2 & 3. 상단 회차 및 분류 구역 */}
-          <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
-            
-            <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-              <div>
-                <label className="text-[11px] sm:text-xs font-bold text-slate-700 mb-1 flex items-center justify-between whitespace-nowrap">
-                  <span>최신 회차 (전체)</span>
-                  <span className="text-[9px] sm:text-[10px] text-slate-400 font-normal hidden sm:inline">🖱️ 휠 조절</span>
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  onWheel={(e) => handleInputWheel(e, 'TOTAL')}
-                  onFocus={() => {
-                    if (episodeInput === '0') setEpisodeInput('');
-                  }}
-                  onBlur={() => {
-                    if (episodeInput.trim() === '') setEpisodeInput('0');
-                  }}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-extrabold text-base bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-400 transition-all cursor-text"
-                  placeholder="최신화"
-                  value={episodeInput}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    setEpisodeInput(val);
-                  }}
-                  title="터치하여 직접 입력하거나 휠로 조절"
+                <textarea
+                  rows={3}
+                  disabled={searchState.type === 'IDLE'}
+                  value={memoInput}
+                  onChange={(e) => setMemoInput(e.target.value)}
+                  placeholder={
+                    searchState.type === 'IDLE'
+                      ? '먼저 위에서 작품을 검색하거나 새 제목을 입력하세요.'
+                      : '메모를 입력하세요... (신규 등록 또는 이동/수정 시 함께 저장됩니다)'
+                  }
+                  className="w-full p-2 bg-white border border-amber-200 rounded-lg text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none leading-relaxed disabled:bg-slate-100 disabled:cursor-not-allowed"
                 />
               </div>
+            )}
+          </div>
+        </section>
 
-              <div>
-                <label className="text-[11px] sm:text-xs font-bold text-amber-900 mb-1 flex items-center justify-between whitespace-nowrap">
-                  <span className="flex items-center gap-1">
-                    <Bookmark className="w-3.5 h-3.5 fill-amber-500 text-amber-600 shrink-0" />
-                    <span>내가 본 회차</span>
-                  </span>
-                  <span className="text-[9px] sm:text-[10px] text-amber-700 font-normal hidden sm:inline">🖱️ 휠 조절</span>
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  onWheel={(e) => handleInputWheel(e, 'MY')}
-                  onFocus={() => {
-                    if (myEpisodeInput === '0') setMyEpisodeInput('');
-                  }}
-                  onBlur={() => {
-                    if (myEpisodeInput.trim() === '') setMyEpisodeInput('0');
-                  }}
-                  className="w-full p-2.5 border border-amber-500 bg-amber-50/90 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-600 placeholder-amber-400 transition-all cursor-text"
-                  placeholder="보던 위치"
-                  value={myEpisodeInput}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    setMyEpisodeInput(val);
-                  }}
-                  title="터치하여 직접 입력하거나 휠로 조절"
-                />
-              </div>
+        {/* 2 & 3. 상단 회차 및 분류 구역 */}
+        <section className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3 transition-colors relative z-20`}>
+          
+          <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+            <div>
+              <label className="text-[11px] sm:text-xs font-bold text-slate-700 mb-1 flex items-center justify-between whitespace-nowrap">
+                <span>최신 회차 (전체)</span>
+                <span className="text-[9px] sm:text-[10px] text-slate-400 font-normal hidden sm:inline">🖱️ 휠 조절</span>
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                onWheel={(e) => handleInputWheel(e, 'TOTAL')}
+                onFocus={() => {
+                  if (episodeInput === '0') setEpisodeInput('');
+                }}
+                onBlur={() => {
+                  if (episodeInput.trim() === '') setEpisodeInput('0');
+                }}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-extrabold text-base bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder-slate-400 transition-all cursor-text"
+                placeholder="최신화"
+                value={episodeInput}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  setEpisodeInput(val);
+                }}
+                title="터치하여 직접 입력하거나 휠로 조절"
+              />
             </div>
 
             <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="block text-xs font-bold text-slate-700">
-                  분류 선택 {selectedStatus && <span className="text-indigo-600 font-extrabold">({formatStatusLabel(selectedStatus)})</span>}
-                </label>
-                <span className="text-[10px] text-slate-400">버튼 클릭</span>
-              </div>
+              <label className="text-[11px] sm:text-xs font-bold text-amber-900 mb-1 flex items-center justify-between whitespace-nowrap">
+                <span className="flex items-center gap-1">
+                  <Bookmark className="w-3.5 h-3.5 fill-amber-500 text-amber-600 shrink-0" />
+                  <span>내가 본 회차</span>
+                </span>
+                <span className="text-[9px] sm:text-[10px] text-amber-700 font-normal hidden sm:inline">🖱️ 휠 조절</span>
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                onWheel={(e) => handleInputWheel(e, 'MY')}
+                onFocus={() => {
+                  if (myEpisodeInput === '0') setMyEpisodeInput('');
+                }}
+                onBlur={() => {
+                  if (myEpisodeInput.trim() === '') setMyEpisodeInput('0');
+                }}
+                className="w-full p-2.5 border border-amber-500 bg-amber-50/90 rounded-xl font-black text-base text-amber-950 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-600 placeholder-amber-400 transition-all cursor-text"
+                placeholder="보던 위치"
+                value={myEpisodeInput}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  setMyEpisodeInput(val);
+                }}
+                title="터치하여 직접 입력하거나 휠로 조절"
+              />
+            </div>
+          </div>
 
-              {searchState.type === 'NEW_WORK' && (
-                <div className="grid grid-cols-3 gap-1.5">
-                  {NEW_WORK_STATUS_OPTIONS.map((opt) => {
-                    const isSelected = selectedStatus === opt;
-                    return (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => setSelectedStatus(opt)}
-                        className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1 ${
-                          isSelected
-                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm scale-[1.02]'
+          <div>
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="block text-xs font-bold text-slate-700">
+                분류 선택 {selectedStatus && <span className="text-indigo-600 font-extrabold">({formatStatusLabel(selectedStatus)})</span>}
+              </label>
+              <span className="text-[10px] text-slate-400">버튼 클릭</span>
+            </div>
+
+            {searchState.type === 'NEW_WORK' && (
+              <div className="grid grid-cols-3 gap-1.5">
+                {NEW_WORK_STATUS_OPTIONS.map((opt) => {
+                  const isSelected = selectedStatus === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setSelectedStatus(opt)}
+                      className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1 ${
+                        isSelected
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm scale-[1.02]'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {isSelected && <Check className="w-3.5 h-3.5" />}
+                      <span>{opt}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {searchState.type === 'EXACT_MATCH' && (
+              <div className="grid grid-cols-3 gap-1.5">
+                {UPDATE_STATUS_BUTTONS.map((btn) => {
+                  const isBoughtActive = selectedStatus.startsWith('본거_');
+                  const isSelected = btn === '본거' ? isBoughtActive : (selectedStatus === btn || selectedStatus === `본거_${btn}`.replace('본거_시즌 완결', '본거_시즌완결'));
+                  
+                  return (
+                    <button
+                      key={btn}
+                      type="button"
+                      onClick={() => handleSelectUpdateStatus(btn)}
+                      className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1 ${
+                        btn === '본거'
+                          ? isBoughtActive
+                            ? 'bg-purple-600 text-white border-purple-600 shadow-sm scale-[1.02]'
+                            : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
+                          : isSelected
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm scale-[1.02]'
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        {isSelected && <Check className="w-3.5 h-3.5" />}
-                        <span>{opt}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                      }`}
+                    >
+                      {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                      <span className="truncate">{btn === '본거' ? '⭐ 본거' : btn}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {searchState.type === 'IDLE' && (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-400 text-center">
+                작품 검색 완료 후 선택할 수 있는 분류 버튼이 활성화됩니다.
+              </div>
+            )}
+          </div>
+
+          {errorMessage && (
+            <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {/* 우측 날개 플로팅 버튼 */}
+          {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
+            <aside 
+              aria-label="빠른 실행 메뉴"
+              className="absolute right-2 sm:-right-24 top-16 sm:top-20 z-40 flex flex-col gap-2 pointer-events-auto"
+            >
+              {searchState.type === 'NEW_WORK' && (
+                <button
+                  type="button"
+                  onClick={handleRegister}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.secondaryBtn} text-white border-emerald-400/50 shadow-emerald-500/40`}
+                  title="신규 등록 (Alt+1)"
+                >
+                  <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="inline">신규 등록</span>
+                </button>
               )}
 
               {searchState.type === 'EXACT_MATCH' && (
-                <div className="grid grid-cols-3 gap-1.5">
-                  {UPDATE_STATUS_BUTTONS.map((btn) => {
-                    const isBoughtActive = selectedStatus.startsWith('본거_');
-                    const isSelected = btn === '본거' ? isBoughtActive : (selectedStatus === btn || selectedStatus === `본거_${btn}`.replace('본거_시즌 완결', '본거_시즌완결'));
-                    
-                    return (
-                      <button
-                        key={btn}
-                        type="button"
-                        onClick={() => handleSelectUpdateStatus(btn)}
-                        className={`py-2 px-1.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1 ${
-                          btn === '본거'
-                            ? isBoughtActive
-                              ? 'bg-purple-600 text-white border-purple-600 shadow-sm scale-[1.02]'
-                              : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
-                            : isSelected
-                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm scale-[1.02]'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
-                        <span className="truncate">{btn === '본거' ? '⭐ 본거' : btn}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {searchState.type === 'IDLE' && (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-400 text-center">
-                  작품 검색 완료 후 선택할 수 있는 분류 버튼이 활성화됩니다.
-                </div>
-              )}
-            </div>
-
-            {errorMessage && (
-              <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
-                <span>{errorMessage}</span>
-              </div>
-            )}
-
-            {/* 우측 날개 플로팅 버튼 (기존 그대로 유지) */}
-            {(searchState.type === 'NEW_WORK' || searchState.type === 'EXACT_MATCH') && (
-              <aside 
-                aria-label="빠른 실행 메뉴"
-                className="absolute right-2 sm:-right-24 top-16 sm:top-20 z-40 flex flex-col gap-2 pointer-events-auto"
-              >
-                {searchState.type === 'NEW_WORK' && (
-                  <button
-                    type="button"
-                    onClick={handleRegister}
-                    className={`flex items-center gap-1.5 px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.secondaryBtn} text-white border-emerald-400/50 shadow-emerald-500/40`}
-                    title="신규 등록 (Alt+1)"
-                  >
-                    <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                    <span className="inline">신규 등록</span>
-                  </button>
-                )}
-
-                {searchState.type === 'EXACT_MATCH' && (
-                  <button
-                    type="button"
-                    onClick={handleMoveOrUpdate}
-                    className={`flex items-center gap-1.5 px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.primaryBtn} text-white border-indigo-400/50 shadow-indigo-500/40`}
-                    title="이동 / 수정 (Alt+2)"
-                  >
-                    <ArrowRightLeft className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                    <span className="inline">이동/수정</span>
-                  </button>
-                )}
-
-                {searchState.type === 'EXACT_MATCH' && (
-                  <button
-                    type="button"
-                    onClick={handleDeleteWork}
-                    className="flex items-center gap-1.5 px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border bg-rose-600 hover:bg-rose-700 text-white border-rose-400/50 shadow-rose-500/40"
-                    title="데이터베이스에서 완전히 삭제"
-                  >
-                    <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                    <span className="inline">삭제</span>
-                  </button>
-                )}
-              </aside>
-            )}
-
-          </section>
-
-          {logs.length > 0 && (
-            <section className="space-y-1">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                <Clock className={`w-3.5 h-3.5 ${themeStyles.accentText}`} />
-                <span>최근 검색 기록</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {logs.map((item: string, idx: number) => (
-                  <button
-                    key={idx}
-                    onClick={() => { setSearchInput(item); executeSearch(item); }}
-                    className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-xs font-medium rounded-lg border border-slate-200 transition-all active:scale-95 shadow-2xs"
-                  >
-                    #{item}
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* 목록 상자 */}
-          <section 
-            ref={cardBoxRef}
-            style={position ? {
-              position: 'fixed',
-              left: `${position.x}px`,
-              top: `${position.y}px`,
-              width: '100%',
-              maxWidth: '576px',
-              zIndex: 30
-            } : {}}
-            className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3 sm:p-4 shadow-xl space-y-3 transition-colors`}
-          >
-            {/* 상단 드래그 헤더 및 정렬 옵션 */}
-            <div 
-              onMouseDown={(e) => startDraggingBox(e.clientX, e.clientY, e.target as HTMLElement)}
-              onTouchStart={(e) => {
-                if (e.touches.length > 0) {
-                  startDraggingBox(e.touches[0].clientX, e.touches[0].clientY, e.target as HTMLElement);
-                }
-              }}
-              className="flex items-center justify-between text-xs font-bold text-slate-700 cursor-move select-none p-1 -m-1 rounded-t-xl hover:bg-slate-50 transition-colors group touch-none gap-1"
-              title="손가락/마우스로 잡고 끌면 원하는 위치로 이동합니다."
-            >
-              <span className="flex items-center gap-1 shrink-0 whitespace-nowrap text-[11px] sm:text-xs">
-                <Move className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 transition-colors hidden sm:inline" />
-                <Layers className={`w-3.5 h-3.5 ${themeStyles.accentText}`} />
-                <span>전체 목록 ({filteredAndSortedWorks.length})</span>
-              </span>
-
-              <div className="flex items-center gap-1 shrink-0">
-                <select
-                  value={sortOption}
-                  onChange={(e) => setSortOption(e.target.value as SortOption)}
-                  className="bg-slate-50 border border-slate-200 text-slate-700 text-[11px] sm:text-xs rounded-lg px-1.5 sm:px-2 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer font-bold shadow-2xs"
-                >
-                  <optgroup label="── 내가 본 날짜 ──">
-                    <option value="read_desc">📌 최근 본 날짜순 (최신순)</option>
-                    <option value="read_asc">⏳ 오래전 본 날짜순 (오래된순)</option>
-                  </optgroup>
-                  <optgroup label="── 데이터 저장일 ──">
-                    <option value="saved_desc">💾 최근 저장일순 (최신순)</option>
-                    <option value="saved_asc">🗄️ 오래된 저장일순 (오래된순)</option>
-                  </optgroup>
-                  <optgroup label="── 작품 이름 ──">
-                    <option value="title_asc">🔤 이름순 (ㄱ-ㅎ)</option>
-                    <option value="title_desc">🔡 이름순 (ㅎ-ㄱ)</option>
-                  </optgroup>
-                  <optgroup label="── 전체 회차 ──">
-                    <option value="ep_desc">🔼 전체 회차 높은순</option>
-                    <option value="ep_asc">🔽 전체 회차 낮은순</option>
-                  </optgroup>
-                  <optgroup label="── 데이터 점검 ──">
-                    <option value="err_my_gt_total">🚨 점검: 본 회차 초과</option>
-                    <option value="diff_my_lt_total">📖 점검: 본 회차 미만</option>
-                  </optgroup>
-                </select>
-
-                {position && (
-                  <button
-                    onClick={() => setPosition(null)}
-                    className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-md transition-all shrink-0"
-                    title="기본 중앙 위치로 복원"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* 탭 영역 */}
-            <div 
-              ref={tabsRef}
-              onMouseDown={(e) => handleTabStart(e.pageX)}
-              onMouseMove={(e) => handleTabMove(e.pageX)}
-              onMouseUp={handleTabEnd}
-              onMouseLeave={handleTabEnd}
-              onTouchStart={(e) => e.touches.length > 0 && handleTabStart(e.touches[0].pageX)}
-              onTouchMove={(e) => e.touches.length > 0 && handleTabMove(e.touches[0].pageX)}
-              onTouchEnd={handleTabEnd}
-              onWheel={handleTabWheel}
-              className="flex gap-1.5 overflow-x-auto pb-2 bg-slate-100 p-1.5 rounded-xl text-xs font-bold cursor-grab active:cursor-grabbing select-none"
-            >
-              {STATUS_TABS.map((tab) => {
-                const isActive = activeTab === tab.id;
-
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabClick(tab.id)}
-                    className={`px-3 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-all ${
-                      isActive
-                        ? `${themeStyles.headerBg} text-white shadow-xs`
-                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* 하단 카드 목록 (카드 높이 통일 + 우측 비고 아이콘 별도 터치 영역) */}
-            <div 
-              style={{ height: `${listHeight}px` }} 
-              className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
-            >
-              {filteredAndSortedWorks.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-400 italic">
-                  해당하는 작품이 없습니다.
-                </div>
-              ) : (
-                filteredAndSortedWorks.map((work) => {
-                  const myEp = work.my_episode || 0;
-                  const totalEp = work.episode || 0;
-                  const isError = myEp > totalEp;
-                  const remainingFireDays = getFireRemainingDays(work);
-                  const dateInfo = formatWorkDate((work as any).last_read_at || work.updated_at || work.created_at);
-                  const workMemo = ((work as any).memo || '').trim();
-                  const hasMemo = workMemo.length > 0;
-
-                  return (
-                    <div 
-                      key={work.id}
-                      onClick={() => handleSelectSuggestion(work)}
-                      className="p-1.5 sm:p-2 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2 shadow-2xs min-h-[48px]"
-                      title="클릭 시 상단 편집창으로 로드 및 제목 복사"
-                    >
-                      {/* 왼쪽: 제목 + 비고 아이콘 버튼 */}
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1 my-auto pr-1">
-                        {remainingFireDays !== null && (
-                          <span 
-                            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black shrink-0 ${
-                              remainingFireDays <= 1 
-                                ? 'bg-rose-100 text-rose-700 border border-rose-300 animate-pulse' 
-                                : 'bg-amber-100 text-amber-800 border border-amber-300'
-                            }`}
-                            title={`신규 탭 유지 기한: ${remainingFireDays}일 남음`}
-                          >
-                            <Flame className="w-3 h-3 fill-current shrink-0" />
-                            <span>{remainingFireDays === 0 ? 'D-Day' : `D-${remainingFireDays}`}</span>
-                          </span>
-                        )}
-
-                        <span className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 leading-tight line-clamp-2">
-                          {work.title}
-                        </span>
-
-                        {/* 비고(메모) 전용 아이콘 버튼: 카드 높이에 영향 없이 우측에 배치, 터치 시 그 자리에서 즉시 팝업 오픈 */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMemoModal({
-                              isOpen: true,
-                              mode: 'QUICK_LIST',
-                              targetWork: work,
-                              text: workMemo
-                            });
-                          }}
-                          className={`relative p-1 rounded-md border transition-all shrink-0 active:scale-90 ${
-                            hasMemo
-                              ? 'bg-amber-100/90 text-amber-800 border-amber-300 hover:bg-amber-200'
-                              : 'bg-white/80 text-slate-400 border-slate-200 hover:text-slate-600 hover:bg-slate-200/70'
-                          }`}
-                          title={hasMemo ? `비고 보기/수정: ${workMemo}` : '비고 추가'}
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          {hasMemo && (
-                            <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-500" />
-                          )}
-                        </button>
-
-                        <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hidden sm:inline" />
-                      </div>
-
-                      {/* 오른쪽: 회차 및 상태 버튼 (160px 너비) */}
-                      <div className="flex flex-col items-end gap-0.5 shrink-0 whitespace-nowrap my-auto">
-                        
-                        {/* 1층: 회차 박스 */}
-                        <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[160px] justify-between overflow-hidden select-none pointer-events-none ${getEpisodeBoxStyle(myEp, totalEp)}`}>
-                          <div 
-                            onWheel={(e) => handleListWheel(e, work, 'MY')}
-                            className="px-1.5 py-0.5 bg-amber-50/50 hover:bg-amber-100/80 transition-colors flex-1 text-left pointer-events-auto"
-                            title="마우스 휠로 본 회차 조절 / 클릭 시 상단 편집창 로드"
-                          >
-                            <span className={`font-black truncate ${isError ? 'text-rose-700' : 'text-amber-900'}`}>
-                              📌 {myEp}화
-                            </span>
-                          </div>
-
-                          <span className="text-slate-300 font-normal shrink-0">/</span>
-
-                          <div 
-                            onWheel={(e) => handleListWheel(e, work, 'TOTAL')}
-                            className="px-1.5 py-0.5 hover:bg-slate-200/60 transition-colors flex-1 text-right pointer-events-auto"
-                            title="마우스 휠로 전체 회차 조절 / 클릭 시 상단 편집창 로드"
-                          >
-                            <span className="truncate text-slate-800 font-extrabold">
-                              {totalEp}화
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* 2층: +1 버튼 + 상태 태그 */}
-                        <div className="flex items-center gap-1 w-[160px] justify-end">
-                          <button
-                            onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
-                            className="px-1.5 py-0.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black rounded border border-amber-600 transition-all flex items-center gap-0.5 shadow-xs shrink-0 active:scale-95"
-                            title="내가 본 회차 +1화 빠른 증가"
-                          >
-                            <Plus className="w-2.5 h-2.5" />1
-                          </button>
-
-                          <span className="flex-1 py-0.5 px-1.5 text-[11px] bg-slate-200/90 text-slate-800 rounded font-bold shrink-0 border border-slate-300/60 text-center truncate flex items-center justify-center gap-1">
-                            <span>{formatStatusLabel(work.status)}</span>
-                            {dateInfo && (
-                              <span className={`text-[10px] font-mono ${dateInfo.isThisYear ? 'text-indigo-700 font-black' : 'text-amber-700 font-bold'}`}>
-                                ({dateInfo.text})
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* 높이 조절 손잡이 */}
-            <div
-              onMouseDown={(e) => startResizing(e.clientY)}
-              onTouchStart={(e) => {
-                if (e.touches.length > 0) {
-                  startResizing(e.touches[0].clientY);
-                }
-              }}
-              className="w-full pt-1.5 pb-1 cursor-row-resize flex flex-col items-center justify-center hover:bg-slate-100/80 rounded-b-xl border-t border-slate-100 transition-colors group touch-none"
-              title="위아래로 끌면 목록 높이를 늘리거나 줄일 수 있습니다."
-            >
-              <GripHorizontal className="w-6 h-6 text-slate-400 group-hover:text-indigo-600 transition-colors" />
-            </div>
-          </section>
-
-        </main>
-
-        {/* 🖥️ 넓은 화면(lg 이상 PC 웹) 전용: 우측 상시 노출 작품 비고(메모) 카드 */}
-        <aside className="hidden lg:flex flex-col w-80 shrink-0 sticky top-20 z-20">
-          <div className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-4 shadow-sm space-y-3`}>
-            <div className="flex items-center justify-between">
-              <span className={`text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5 ${themeStyles.accentText}`}>
-                <FileText className="w-4 h-4" />
-                <span>작품 비고 (메모)</span>
-              </span>
-              {memoInput.trim() && (
                 <button
                   type="button"
-                  onClick={() => setMemoInput('')}
-                  className="text-[11px] text-slate-400 hover:text-rose-600 font-semibold transition-colors"
+                  onClick={handleMoveOrUpdate}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border ${themeStyles.primaryBtn} text-white border-indigo-400/50 shadow-indigo-500/40`}
+                  title="이동 / 수정 (Alt+2)"
                 >
-                  내용 비우기
+                  <ArrowRightLeft className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="inline">이동/수정</span>
+                </button>
+              )}
+
+              {searchState.type === 'EXACT_MATCH' && (
+                <button
+                  type="button"
+                  onClick={handleDeleteWork}
+                  className="flex items-center gap-1.5 px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-2xl font-bold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 border bg-rose-600 hover:bg-rose-700 text-white border-rose-400/50 shadow-rose-500/40"
+                  title="데이터베이스에서 완전히 삭제"
+                >
+                  <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="inline">삭제</span>
+                </button>
+              )}
+            </aside>
+          )}
+
+        </section>
+
+        {logs.length > 0 && (
+          <section className="space-y-1">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+              <Clock className={`w-3.5 h-3.5 ${themeStyles.accentText}`} />
+              <span>최근 검색 기록</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {logs.map((item: string, idx: number) => (
+                <button
+                  key={idx}
+                  onClick={() => { setSearchInput(item); executeSearch(item); }}
+                  className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 text-xs font-medium rounded-lg border border-slate-200 transition-all active:scale-95 shadow-2xs"
+                >
+                  #{item}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 목록 상자 */}
+        <section 
+          ref={cardBoxRef}
+          style={position ? {
+            position: 'fixed',
+            left: `${position.x}px`,
+            top: `${position.y}px`,
+            width: '100%',
+            maxWidth: '576px',
+            zIndex: 30
+          } : {}}
+          className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3 sm:p-4 shadow-xl space-y-3 transition-colors`}
+        >
+          {/* 상단 드래그 헤더 및 정렬 옵션 */}
+          <div 
+            onMouseDown={(e) => startDraggingBox(e.clientX, e.clientY, e.target as HTMLElement)}
+            onTouchStart={(e) => {
+              if (e.touches.length > 0) {
+                startDraggingBox(e.touches[0].clientX, e.touches[0].clientY, e.target as HTMLElement);
+              }
+            }}
+            className="flex items-center justify-between text-xs font-bold text-slate-700 cursor-move select-none p-1 -m-1 rounded-t-xl hover:bg-slate-50 transition-colors group touch-none gap-1"
+            title="손가락/마우스로 잡고 끌면 원하는 위치로 이동합니다."
+          >
+            <span className="flex items-center gap-1 shrink-0 whitespace-nowrap text-[11px] sm:text-xs">
+              <Move className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 transition-colors hidden sm:inline" />
+              <Layers className={`w-3.5 h-3.5 ${themeStyles.accentText}`} />
+              <span>전체 목록 ({filteredAndSortedWorks.length})</span>
+            </span>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as SortOption)}
+                className="bg-slate-50 border border-slate-200 text-slate-700 text-[11px] sm:text-xs rounded-lg px-1.5 sm:px-2 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer font-bold shadow-2xs"
+              >
+                <optgroup label="── 내가 본 날짜 ──">
+                  <option value="read_desc">📌 최근 본 날짜순 (최신순)</option>
+                  <option value="read_asc">⏳ 오래전 본 날짜순 (오래된순)</option>
+                </optgroup>
+                <optgroup label="── 데이터 저장일 ──">
+                  <option value="saved_desc">💾 최근 저장일순 (최신순)</option>
+                  <option value="saved_asc">🗄️ 오래된 저장일순 (오래된순)</option>
+                </optgroup>
+                <optgroup label="── 작품 이름 ──">
+                  <option value="title_asc">🔤 이름순 (ㄱ-ㅎ)</option>
+                  <option value="title_desc">🔡 이름순 (ㅎ-ㄱ)</option>
+                </optgroup>
+                <optgroup label="── 전체 회차 ──">
+                  <option value="ep_desc">🔼 전체 회차 높은순</option>
+                  <option value="ep_asc">🔽 전체 회차 낮은순</option>
+                </optgroup>
+                <optgroup label="── 데이터 점검 ──">
+                  <option value="err_my_gt_total">🚨 점검: 본 회차 초과</option>
+                  <option value="diff_my_lt_total">📖 점검: 본 회차 미만</option>
+                </optgroup>
+              </select>
+
+              {position && (
+                <button
+                  onClick={() => setPosition(null)}
+                  className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-md transition-all shrink-0"
+                  title="기본 중앙 위치로 복원"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
-
-            <div className="text-xs font-bold text-slate-700 truncate bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/80">
-              {searchState.type === 'EXACT_MATCH'
-                ? `📖 ${searchState.work.title}`
-                : searchState.type === 'NEW_WORK'
-                  ? `🆕 ${searchInput.trim() || '신규 작품'}`
-                  : '작품을 검색하거나 목록에서 선택하세요'}
-            </div>
-
-            <textarea
-              ref={desktopMemoRef}
-              rows={8}
-              disabled={searchState.type === 'IDLE'}
-              value={memoInput}
-              onChange={(e) => setMemoInput(e.target.value)}
-              placeholder={
-                searchState.type === 'IDLE'
-                  ? '작품을 선택하면 여기에 비고(메모)를 작성할 수 있습니다.'
-                  : '감상평, 볼 예정인 회차, 특징 등 메모를 자유롭게 입력하세요...'
-              }
-              className="w-full p-3 bg-amber-50/40 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-400 resize-none leading-relaxed disabled:bg-slate-100 disabled:cursor-not-allowed transition-all"
-            />
-
-            <p className="text-[11px] text-slate-400 leading-snug">
-              * 상단의 <strong>신규 등록</strong> 또는 <strong>이동/수정</strong> 버튼을 누르면 비고 내용도 함께 저장됩니다.
-            </p>
           </div>
-        </aside>
 
-      </div>
+          {/* 탭 영역 */}
+          <div 
+            ref={tabsRef}
+            onMouseDown={(e) => handleTabStart(e.pageX)}
+            onMouseMove={(e) => handleTabMove(e.pageX)}
+            onMouseUp={handleTabEnd}
+            onMouseLeave={handleTabEnd}
+            onTouchStart={(e) => e.touches.length > 0 && handleTabStart(e.touches[0].pageX)}
+            onTouchMove={(e) => e.touches.length > 0 && handleTabMove(e.touches[0].pageX)}
+            onTouchEnd={handleTabEnd}
+            onWheel={handleTabWheel}
+            className="flex gap-1.5 overflow-x-auto pb-2 bg-slate-100 p-1.5 rounded-xl text-xs font-bold cursor-grab active:cursor-grabbing select-none"
+          >
+            {STATUS_TABS.map((tab) => {
+              const isActive = activeTab === tab.id;
 
-      {/* 📱 모바일 & 목록 아이콘 클릭 시 열리는 비고(메모) 팝업 모달 (바텀 시트) */}
-      {memoModal.isOpen && (
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabClick(tab.id)}
+                  className={`px-3 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-all ${
+                    isActive
+                      ? `${themeStyles.headerBg} text-white shadow-xs`
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 하단 카드 목록 (높이 고정 + 우측 비고 아이콘 별도 터치 영역) */}
+          <div 
+            style={{ height: `${listHeight}px` }} 
+            className="space-y-1.5 overflow-y-auto pr-0.5 transition-[height] duration-75"
+          >
+            {filteredAndSortedWorks.length === 0 ? (
+              <div className="p-4 text-center text-xs text-slate-400 italic">
+                해당하는 작품이 없습니다.
+              </div>
+            ) : (
+              filteredAndSortedWorks.map((work) => {
+                const myEp = work.my_episode || 0;
+                const totalEp = work.episode || 0;
+                const isError = myEp > totalEp;
+                const remainingFireDays = getFireRemainingDays(work);
+                const dateInfo = formatWorkDate((work as any).last_read_at || work.updated_at || work.created_at);
+                const workMemo = ((work as any).memo || '').trim();
+                const hasMemo = workMemo.length > 0;
+
+                return (
+                  <div 
+                    key={work.id}
+                    onClick={() => handleSelectSuggestion(work)}
+                    className="p-1.5 sm:p-2 bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 rounded-xl flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] group gap-2 shadow-2xs min-h-[48px]"
+                    title="클릭 시 상단 편집창으로 로드 및 제목 복사"
+                  >
+                    {/* 왼쪽: 제목 + 비고 아이콘 버튼 */}
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1 my-auto pr-1">
+                      {remainingFireDays !== null && (
+                        <span 
+                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-black shrink-0 ${
+                            remainingFireDays <= 1 
+                              ? 'bg-rose-100 text-rose-700 border border-rose-300 animate-pulse' 
+                              : 'bg-amber-100 text-amber-800 border border-amber-300'
+                          }`}
+                          title={`신규 탭 유지 기한: ${remainingFireDays}일 남음`}
+                        >
+                          <Flame className="w-3 h-3 fill-current shrink-0" />
+                          <span>{remainingFireDays === 0 ? 'D-Day' : `D-${remainingFireDays}`}</span>
+                        </span>
+                      )}
+
+                      <span className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 leading-tight line-clamp-2">
+                        {work.title}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setQuickMemoModal({
+                            isOpen: true,
+                            targetWork: work,
+                            text: workMemo
+                          });
+                        }}
+                        className={`relative p-1 rounded-md border transition-all shrink-0 active:scale-90 ${
+                          hasMemo
+                            ? 'bg-amber-100/90 text-amber-800 border-amber-300 hover:bg-amber-200'
+                            : 'bg-white/80 text-slate-400 border-slate-200 hover:text-slate-600 hover:bg-slate-200/70'
+                        }`}
+                        title={hasMemo ? `비고 보기/수정: ${workMemo}` : '비고 추가'}
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        {hasMemo && (
+                          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        )}
+                      </button>
+
+                      <Copy className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hidden sm:inline" />
+                    </div>
+
+                    {/* 오른쪽: 회차 및 상태 버튼 (160px 너비) */}
+                    <div className="flex flex-col items-end gap-0.5 shrink-0 whitespace-nowrap my-auto">
+                      
+                      {/* 1층: 회차 박스 */}
+                      <div className={`border rounded-md text-[10px] sm:text-[11px] font-bold shadow-2xs flex items-center font-mono tabular-nums w-[160px] justify-between overflow-hidden select-none pointer-events-none ${getEpisodeBoxStyle(myEp, totalEp)}`}>
+                        <div 
+                          onWheel={(e) => handleListWheel(e, work, 'MY')}
+                          className="px-1.5 py-0.5 bg-amber-50/50 hover:bg-amber-100/80 transition-colors flex-1 text-left pointer-events-auto"
+                          title="마우스 휠로 본 회차 조절 / 클릭 시 상단 편집창 로드"
+                        >
+                          <span className={`font-black truncate ${isError ? 'text-rose-700' : 'text-amber-900'}`}>
+                            📌 {myEp}화
+                          </span>
+                        </div>
+
+                        <span className="text-slate-300 font-normal shrink-0">/</span>
+
+                        <div 
+                          onWheel={(e) => handleListWheel(e, work, 'TOTAL')}
+                          className="px-1.5 py-0.5 hover:bg-slate-200/60 transition-colors flex-1 text-right pointer-events-auto"
+                          title="마우스 휠로 전체 회차 조절 / 클릭 시 상단 편집창 로드"
+                        >
+                          <span className="truncate text-slate-800 font-extrabold">
+                            {totalEp}화
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* 2층: +1 버튼 + 상태 태그 */}
+                      <div className="flex items-center gap-1 w-[160px] justify-end">
+                        <button
+                          onClick={(e) => handleQuickIncrementMyEpisode(work, e)}
+                          className="px-1.5 py-0.5 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-black rounded border border-amber-600 transition-all flex items-center gap-0.5 shadow-xs shrink-0 active:scale-95"
+                          title="내가 본 회차 +1화 빠른 증가"
+                        >
+                          <Plus className="w-2.5 h-2.5" />1
+                        </button>
+
+                        <span className="flex-1 py-0.5 px-1.5 text-[11px] bg-slate-200/90 text-slate-800 rounded font-bold shrink-0 border border-slate-300/60 text-center truncate flex items-center justify-center gap-1">
+                          <span>{formatStatusLabel(work.status)}</span>
+                          {dateInfo && (
+                            <span className={`text-[10px] font-mono ${dateInfo.isThisYear ? 'text-indigo-700 font-black' : 'text-amber-700 font-bold'}`}>
+                              ({dateInfo.text})
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* 높이 조절 손잡이 */}
+          <div
+            onMouseDown={(e) => startResizing(e.clientY)}
+            onTouchStart={(e) => {
+              if (e.touches.length > 0) {
+                startResizing(e.touches[0].clientY);
+              }
+            }}
+            className="w-full pt-1.5 pb-1 cursor-row-resize flex flex-col items-center justify-center hover:bg-slate-100/80 rounded-b-xl border-t border-slate-100 transition-colors group touch-none"
+            title="위아래로 끌면 목록 높이를 늘리거나 줄일 수 있습니다."
+          >
+            <GripHorizontal className="w-6 h-6 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+          </div>
+        </section>
+
+      </main>
+
+      {/* 📋 하단 전체 목록에서 [📝] 아이콘 직접 터치 시 열리는 즉시 수정 팝업 */}
+      {quickMemoModal.isOpen && (
         <div 
-          onClick={() => setMemoModal((prev) => ({ ...prev, isOpen: false }))}
+          onClick={() => setQuickMemoModal((prev) => ({ ...prev, isOpen: false }))}
           className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in"
         >
           <div 
@@ -1517,12 +1511,12 @@ export default function App() {
                   <span>작품 비고 (메모)</span>
                 </div>
                 <p className="text-xs font-bold text-indigo-600 truncate mt-0.5">
-                  {memoModal.targetWork ? memoModal.targetWork.title : (searchInput.trim() || '신규 작품')}
+                  {quickMemoModal.targetWork?.title}
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => setMemoModal((prev) => ({ ...prev, isOpen: false }))}
+                onClick={() => setQuickMemoModal((prev) => ({ ...prev, isOpen: false }))}
                 className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 shrink-0"
               >
                 <X className="w-4 h-4" />
@@ -1531,9 +1525,9 @@ export default function App() {
 
             <textarea
               autoFocus
-              rows={6}
-              value={memoModal.text}
-              onChange={(e) => setMemoModal((prev) => ({ ...prev, text: e.target.value }))}
+              rows={5}
+              value={quickMemoModal.text}
+              onChange={(e) => setQuickMemoModal((prev) => ({ ...prev, text: e.target.value }))}
               placeholder="작품에 대한 비고나 메모를 입력하세요..."
               className="w-full p-3.5 bg-amber-50/50 border border-amber-300 rounded-2xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-amber-500 resize-none leading-relaxed"
             />
@@ -1541,17 +1535,17 @@ export default function App() {
             <div className="grid grid-cols-2 gap-2.5 pt-1">
               <button
                 type="button"
-                onClick={() => setMemoModal((prev) => ({ ...prev, text: '' }))}
+                onClick={() => setQuickMemoModal((prev) => ({ ...prev, text: '' }))}
                 className="py-3 rounded-xl font-bold text-xs sm:text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-all active:scale-95"
               >
                 내용 비우기
               </button>
               <button
                 type="button"
-                onClick={handleConfirmMemoModal}
+                onClick={handleSaveQuickMemo}
                 className={`py-3 rounded-xl font-extrabold text-xs sm:text-sm text-white shadow-md transition-all active:scale-95 ${themeStyles.primaryBtn}`}
               >
-                {memoModal.mode === 'QUICK_LIST' ? '바로 저장' : '확인'}
+                바로 저장
               </button>
             </div>
           </div>
