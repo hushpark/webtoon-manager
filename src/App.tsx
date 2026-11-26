@@ -65,7 +65,37 @@ type SortOption =
   | 'ep_desc' 
   | 'ep_asc';
 
-type FilterChipKey = 'unread' | 'hasMemo' | 'overRead';
+type BuiltInFilterKey = 'unread' | 'hasMemo' | 'overRead';
+
+type CustomFilterType = 
+  | 'total_gte'     // 전체 회차 >= N
+  | 'total_lte'     // 전체 회차 <= N
+  | 'unread_gte'    // 안 본 회차 >= N
+  | 'my_eq_zero'    // 내가 본 회차 = 0 (미시작)
+  | 'title_includes'// 제목 포함 단어
+  | 'memo_includes' // 비고 포함 단어
+  | 'read_within'   // 최근 N일 이내 열람
+  | 'read_older';   // N일 이상 미열람 (방치)
+
+interface CustomFilter {
+  id: string;
+  label: string;
+  type: CustomFilterType;
+  value: string;
+}
+
+const CUSTOM_FILTER_STORAGE_KEY = 'webtoon_custom_filters_v1';
+
+const CUSTOM_FILTER_TYPE_OPTIONS: { type: CustomFilterType; label: string; placeholder: string; isNumber?: boolean; noValue?: boolean }[] = [
+  { type: 'unread_gte', label: '안 본 회차 ≥ N화', placeholder: '예: 10', isNumber: true },
+  { type: 'total_gte', label: '전체 회차 ≥ N화', placeholder: '예: 100', isNumber: true },
+  { type: 'total_lte', label: '전체 회차 ≤ N화', placeholder: '예: 50', isNumber: true },
+  { type: 'my_eq_zero', label: '내가 본 회차 = 0화 (미시작)', placeholder: '', noValue: true },
+  { type: 'title_includes', label: '제목에 단어 포함', placeholder: '예: 회귀' },
+  { type: 'memo_includes', label: '비고(메모)에 단어 포함', placeholder: '예: 몰아보기' },
+  { type: 'read_within', label: '최근 N일 이내 본 작품', placeholder: '예: 7', isNumber: true },
+  { type: 'read_older', label: 'N일 이상 안 본 방치 작품', placeholder: '예: 30', isNumber: true },
+];
 
 export default function App() {
   const [searchInput, setSearchInput] = useState('');
@@ -81,7 +111,6 @@ export default function App() {
   
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // 하단 전체 목록에서 [📝] 아이콘을 직접 터치했을 때 열리는 즉시 수정 팝업
   const [quickMemoModal, setQuickMemoModal] = useState<{
     isOpen: boolean;
     targetWork?: Work;
@@ -100,12 +129,30 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('NEW');
   const [sortOption, setSortOption] = useState<SortOption>('read_desc');
 
-  // 다중 선택 가능한 필터 칩 상태
-  const [activeFilters, setActiveFilters] = useState<Record<FilterChipKey, boolean>>({
+  // 필터 팝오버 및 다중 필터 상태
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [builtInFilters, setBuiltInFilters] = useState<Record<BuiltInFilterKey, boolean>>({
     unread: false,
     hasMemo: false,
     overRead: false,
   });
+
+  // 사용자 정의(커스텀) 필터 목록 및 활성 ID 목록
+  const [customFilters, setCustomFilters] = useState<CustomFilter[]>(() => {
+    try {
+      const saved = localStorage.getItem(CUSTOM_FILTER_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [activeCustomFilterIds, setActiveCustomFilterIds] = useState<string[]>([]);
+
+  // 새 커스텀 필터 생성 폼 상태
+  const [isAddingCustomFilter, setIsAddingCustomFilter] = useState(false);
+  const [newFilterLabel, setNewFilterLabel] = useState('');
+  const [newFilterType, setNewFilterType] = useState<CustomFilterType>('unread_gte');
+  const [newFilterValue, setNewFilterValue] = useState('');
 
   const [listHeight, setListHeight] = useState(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 640) {
@@ -126,6 +173,7 @@ export default function App() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const cardBoxRef = useRef<HTMLDivElement>(null);
+  const filterPopoverRef = useRef<HTMLDivElement>(null);
 
   const tabsRef = useRef<HTMLDivElement>(null);
   const isDraggingTabRef = useRef(false);
@@ -142,15 +190,83 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 1500);
   };
 
-  const toggleFilterChip = (key: FilterChipKey) => {
-    setActiveFilters((prev) => ({ ...prev, [key]: !prev[key] }));
+  // 커스텀 필터 변경 시 localStorage 동기화
+  useEffect(() => {
+    try {
+      localStorage.setItem(CUSTOM_FILTER_STORAGE_KEY, JSON.stringify(customFilters));
+    } catch {
+      // ignore storage quota errors
+    }
+  }, [customFilters]);
+
+  const toggleBuiltInFilter = (key: BuiltInFilterKey) => {
+    setBuiltInFilters((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const resetFilterChips = () => {
-    setActiveFilters({ unread: false, hasMemo: false, overRead: false });
+  const toggleCustomFilter = (id: string) => {
+    setActiveCustomFilterIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
   };
 
-  const hasAnyActiveFilter = activeFilters.unread || activeFilters.hasMemo || activeFilters.overRead;
+  const handleAddCustomFilter = () => {
+    const selectedMeta = CUSTOM_FILTER_TYPE_OPTIONS.find((opt) => opt.type === newFilterType);
+    const trimmedVal = newFilterValue.trim();
+
+    if (!selectedMeta?.noValue && !trimmedVal) {
+      showToast('⚠️ 조건 값을 입력해 주세요.');
+      return;
+    }
+
+    const autoLabel =
+      newFilterLabel.trim() ||
+      (selectedMeta?.noValue
+        ? '미시작(0화)'
+        : selectedMeta?.type === 'unread_gte'
+          ? `${trimmedVal}화 이상 밀림`
+          : selectedMeta?.type === 'total_gte'
+            ? `${trimmedVal}화 이상`
+            : selectedMeta?.type === 'total_lte'
+              ? `${trimmedVal}화 이하`
+              : selectedMeta?.type === 'title_includes'
+                ? `제목:${trimmedVal}`
+                : selectedMeta?.type === 'memo_includes'
+                  ? `비고:${trimmedVal}`
+                  : selectedMeta?.type === 'read_within'
+                    ? `최근 ${trimmedVal}일`
+                    : `${trimmedVal}일 방치`);
+
+    const newFilter: CustomFilter = {
+      id: `cf_${Date.now()}`,
+      label: autoLabel,
+      type: newFilterType,
+      value: trimmedVal,
+    };
+
+    setCustomFilters((prev) => [...prev, newFilter]);
+    setActiveCustomFilterIds((prev) => [...prev, newFilter.id]);
+    setNewFilterLabel('');
+    setNewFilterValue('');
+    setIsAddingCustomFilter(false);
+    showToast(`✅ '${autoLabel}' 필터가 추가되었습니다.`);
+  };
+
+  const handleDeleteCustomFilter = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCustomFilters((prev) => prev.filter((f) => f.id !== id));
+    setActiveCustomFilterIds((prev) => prev.filter((item) => item !== id));
+  };
+
+  const resetAllFilters = () => {
+    setBuiltInFilters({ unread: false, hasMemo: false, overRead: false });
+    setActiveCustomFilterIds([]);
+  };
+
+  const activeFilterCount =
+    (builtInFilters.unread ? 1 : 0) +
+    (builtInFilters.hasMemo ? 1 : 0) +
+    (builtInFilters.overRead ? 1 : 0) +
+    activeCustomFilterIds.length;
 
   const fetchAllWorks = async () => {
     const { data } = await supabase.from('works').select('*').order('updated_at', { ascending: false });
@@ -165,6 +281,9 @@ export default function App() {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
         setShowSuggestions(false);
+      }
+      if (filterPopoverRef.current && !filterPopoverRef.current.contains(e.target as Node)) {
+        setIsFilterOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -181,6 +300,10 @@ export default function App() {
       }
 
       if (e.key === 'Escape') {
+        if (isFilterOpen) {
+          setIsFilterOpen(false);
+          return;
+        }
         handleReset();
       } else if (e.altKey && e.key === '1') {
         e.preventDefault();
@@ -192,7 +315,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchState, selectedStatus, episodeInput, myEpisodeInput, memoInput, searchInput, quickMemoModal.isOpen]);
+  }, [searchState, selectedStatus, episodeInput, myEpisodeInput, memoInput, searchInput, quickMemoModal.isOpen, isFilterOpen]);
 
   useEffect(() => {
     const handleMove = (clientY: number, clientX: number) => {
@@ -239,7 +362,15 @@ export default function App() {
   }, []);
 
   const startDraggingBox = (clientX: number, clientY: number, target: HTMLElement) => {
-    if (target.tagName === 'SELECT' || target.tagName === 'INPUT') return;
+    if (
+      target.tagName === 'SELECT' ||
+      target.tagName === 'INPUT' ||
+      target.tagName === 'BUTTON' ||
+      target.closest('button') ||
+      target.closest('[data-no-drag="true"]')
+    ) {
+      return;
+    }
     if (window.innerWidth < 640) return;
 
     isDraggingBoxRef.current = true;
@@ -696,23 +827,60 @@ export default function App() {
     return remainingDays;
   };
 
-  // 1단계: 탭 + 다중 필터 칩 조합 필터링
-  // 2단계: 1차 정렬 + 2차 보조 자동 다중 정렬
+  // 커스텀 필터 조건 평가 함수
+  const matchesCustomFilter = (work: Work, filter: CustomFilter): boolean => {
+    const myEp = work.my_episode || 0;
+    const totalEp = work.episode || 0;
+    const unreadEp = totalEp - myEp;
+    const memoText = ((work as any).memo || '').toLowerCase();
+    const titleText = (work.title || '').toLowerCase();
+    const numVal = Number(filter.value) || 0;
+    const strVal = filter.value.toLowerCase().trim();
+    const readTime = new Date((work as any).last_read_at || work.updated_at || work.created_at || 0).getTime();
+    const daysElapsed = (Date.now() - readTime) / (24 * 60 * 60 * 1000);
+
+    switch (filter.type) {
+      case 'unread_gte':
+        return unreadEp >= numVal;
+      case 'total_gte':
+        return totalEp >= numVal;
+      case 'total_lte':
+        return totalEp <= numVal;
+      case 'my_eq_zero':
+        return myEp === 0;
+      case 'title_includes':
+        return strVal ? titleText.includes(strVal) : true;
+      case 'memo_includes':
+        return strVal ? memoText.includes(strVal) : true;
+      case 'read_within':
+        return daysElapsed <= numVal;
+      case 'read_older':
+        return daysElapsed >= numVal;
+      default:
+        return true;
+    }
+  };
+
+  // 1단계: 상태 탭 + 기본 필터 칩 + 커스텀 필터 조합
+  // 2단계: 1차 선택 + 2차 자동 보조 다중 정렬
   const filteredAndSortedWorks = useMemo(() => {
+    const activeCustomObjects = customFilters.filter((cf) =>
+      activeCustomFilterIds.includes(cf.id)
+    );
+
     const filtered = allWorks.filter((work) => {
       const myEp = work.my_episode || 0;
       const totalEp = work.episode || 0;
       const hasMemo = Boolean((work as any).memo && (work as any).memo.trim().length > 0);
 
-      // 다중 필터 칩 (AND 조건으로 모두 만족하는 작품 필터링)
-      if (activeFilters.unread) {
-        if (myEp >= totalEp) return false;
-      }
-      if (activeFilters.hasMemo) {
-        if (!hasMemo) return false;
-      }
-      if (activeFilters.overRead) {
-        if (myEp <= totalEp) return false;
+      // 기본 다중 필터
+      if (builtInFilters.unread && myEp >= totalEp) return false;
+      if (builtInFilters.hasMemo && !hasMemo) return false;
+      if (builtInFilters.overRead && myEp <= totalEp) return false;
+
+      // 사용자 커스텀 다중 필터
+      for (const cf of activeCustomObjects) {
+        if (!matchesCustomFilter(work, cf)) return false;
       }
 
       // 상단 상태 탭 필터
@@ -744,14 +912,12 @@ export default function App() {
         return primaryDiff !== 0 ? primaryDiff : a.title.localeCompare(b.title, 'ko');
       } 
       if (sortOption === 'unread_desc') {
-        // 1차: 안 본 회차 많은순 -> 2차: 최근 본 날짜순 -> 3차: 가나다순
         primaryDiff = getUnreadCount(b) - getUnreadCount(a);
         if (primaryDiff !== 0) return primaryDiff;
         const secondaryDiff = getReadTime(b) - getReadTime(a);
         return secondaryDiff !== 0 ? secondaryDiff : a.title.localeCompare(b.title, 'ko');
       }
       if (sortOption === 'unread_asc') {
-        // 1차: 안 본 회차 적은순 -> 2차: 최근 본 날짜순 -> 3차: 가나다순
         primaryDiff = getUnreadCount(a) - getUnreadCount(b);
         if (primaryDiff !== 0) return primaryDiff;
         const secondaryDiff = getReadTime(b) - getReadTime(a);
@@ -782,7 +948,7 @@ export default function App() {
 
       return 0;
     });
-  }, [allWorks, activeTab, sortOption, activeFilters]);
+  }, [allWorks, activeTab, sortOption, builtInFilters, customFilters, activeCustomFilterIds]);
 
   const formatStatusLabel = (status?: string) => {
     if (!status) return '기타';
@@ -813,6 +979,8 @@ export default function App() {
     }
     return 'bg-white border-slate-200 text-slate-700';
   };
+
+  const selectedCustomTypeMeta = CUSTOM_FILTER_TYPE_OPTIONS.find((o) => o.type === newFilterType);
 
   return (
     <div className={`min-h-screen overflow-y-scroll ${themeStyles.bg} text-slate-800 pb-36 transition-colors duration-300 flex flex-col items-center`}>
@@ -942,7 +1110,6 @@ export default function App() {
               </p>
             )}
 
-            {/* 1) 기본 대기 상태 (IDLE): 단축키 안내 + [📝 비고] 버튼 */}
             {!loading && searchState.type === 'IDLE' && (
               <div className="flex items-center justify-between gap-2 text-xs text-slate-500 px-3 py-2 bg-slate-50/70 rounded-xl border border-slate-100 font-medium">
                 <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap flex-1">
@@ -976,7 +1143,6 @@ export default function App() {
               </div>
             )}
 
-            {/* 2) 기존 작품 선택 상태 (EXACT_MATCH) */}
             {!loading && searchState.type === 'EXACT_MATCH' && (
               <div className="bg-blue-50 border border-blue-200 p-2.5 rounded-xl text-xs sm:text-sm text-blue-900 space-y-1">
                 <div className="font-extrabold text-blue-700 text-sm flex items-center justify-between gap-2">
@@ -1018,7 +1184,6 @@ export default function App() {
               </div>
             )}
 
-            {/* 3) 신규 작품 입력 상태 (NEW_WORK) */}
             {!loading && searchState.type === 'NEW_WORK' && (
               <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-xs sm:text-sm text-emerald-900">
                 <div className="font-extrabold text-emerald-800 text-sm flex items-center justify-between gap-2">
@@ -1294,7 +1459,7 @@ export default function App() {
           </section>
         )}
 
-        {/* 목록 상자 */}
+        {/* 📚 목록 상자 */}
         <section 
           ref={cardBoxRef}
           style={position ? {
@@ -1305,9 +1470,9 @@ export default function App() {
             maxWidth: '576px',
             zIndex: 30
           } : {}}
-          className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3 sm:p-4 shadow-xl space-y-2.5 transition-colors`}
+          className={`bg-white border ${themeStyles.cardBorder} rounded-2xl p-3 sm:p-4 shadow-xl space-y-3 transition-colors`}
         >
-          {/* 상단 드래그 헤더 및 1차/2차 스마트 정렬 옵션 */}
+          {/* 상단 드래그 헤더 + [필터] 팝오버 버튼 + 정렬 드롭다운 */}
           <div 
             onMouseDown={(e) => startDraggingBox(e.clientX, e.clientY, e.target as HTMLElement)}
             onTouchStart={(e) => {
@@ -1315,7 +1480,7 @@ export default function App() {
                 startDraggingBox(e.touches[0].clientX, e.touches[0].clientY, e.target as HTMLElement);
               }
             }}
-            className="flex items-center justify-between text-xs font-bold text-slate-700 cursor-move select-none p-1 -m-1 rounded-t-xl hover:bg-slate-50 transition-colors group touch-none gap-1"
+            className="flex items-center justify-between text-xs font-bold text-slate-700 cursor-move select-none p-1 -m-1 rounded-t-xl hover:bg-slate-50 transition-colors group touch-none gap-1 relative"
             title="손가락/마우스로 잡고 끌면 원하는 위치로 이동합니다."
           >
             <span className="flex items-center gap-1 shrink-0 whitespace-nowrap text-[11px] sm:text-xs">
@@ -1324,7 +1489,219 @@ export default function App() {
               <span>전체 목록 ({filteredAndSortedWorks.length})</span>
             </span>
 
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0" data-no-drag="true">
+              {/* [필터] 팝오버 트리거 버튼 (평소 높이를 차지하지 않음) */}
+              <div className="relative" ref={filterPopoverRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsFilterOpen((prev) => !prev)}
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] sm:text-xs font-extrabold border transition-all active:scale-95 cursor-pointer ${
+                    activeFilterCount > 0
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                      : isFilterOpen
+                        ? 'bg-slate-200 text-slate-800 border-slate-300'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                  title="다중 필터 및 내 커스텀 필터 설정"
+                >
+                  <Filter className="w-3 h-3 shrink-0" />
+                  <span>필터</span>
+                  {activeFilterCount > 0 && (
+                    <span className="px-1.5 py-0.2 bg-white text-indigo-700 rounded-full text-[10px] font-black leading-none">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* 클릭 시 아래로 겹쳐서 열리는 필터 설정 팝오버 */}
+                {isFilterOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-[310px] sm:w-[350px] bg-white border border-slate-300 rounded-2xl shadow-2xl z-50 p-3.5 space-y-3 text-left cursor-default">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                        <Filter className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>다중 조건 필터 (중복 선택)</span>
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {activeFilterCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={resetAllFilters}
+                            className="text-[11px] font-bold text-rose-600 hover:underline"
+                          >
+                            전체 해제
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setIsFilterOpen(false)}
+                          className="p-0.5 rounded-full hover:bg-slate-100 text-slate-500"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 1. 기본 필터 칩 */}
+                    <div className="space-y-1.5">
+                      <span className="block text-[10px] font-bold text-slate-400">기본 필터</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleBuiltInFilter('unread')}
+                          className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1 ${
+                            builtInFilters.unread
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {builtInFilters.unread && <Check className="w-3 h-3" />}
+                          <span>📖 안 본 회차</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleBuiltInFilter('hasMemo')}
+                          className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1 ${
+                            builtInFilters.hasMemo
+                              ? 'bg-amber-500 text-white border-amber-500 shadow-2xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {builtInFilters.hasMemo && <Check className="w-3 h-3" />}
+                          <span>📝 비고 있음</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => toggleBuiltInFilter('overRead')}
+                          className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1 ${
+                            builtInFilters.overRead
+                              ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {builtInFilters.overRead && <Check className="w-3 h-3" />}
+                          <span>🚨 회차 초과</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 2. 내가 만든 커스텀 필터 목록 */}
+                    <div className="space-y-1.5 border-t border-slate-100 pt-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-slate-400">
+                          내 커스텀 필터 ({customFilters.length})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsAddingCustomFilter((prev) => !prev)}
+                          className="text-[11px] font-extrabold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-0.5"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>{isAddingCustomFilter ? '닫기' : '새 필터 만들기'}</span>
+                        </button>
+                      </div>
+
+                      {customFilters.length === 0 && !isAddingCustomFilter && (
+                        <p className="text-[11px] text-slate-400 italic py-1">
+                          추가된 커스텀 필터가 없습니다. 우측 버튼을 눌러 직접 만들어 보세요.
+                        </p>
+                      )}
+
+                      {customFilters.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {customFilters.map((cf) => {
+                            const isActive = activeCustomFilterIds.includes(cf.id);
+                            return (
+                              <div
+                                key={cf.id}
+                                onClick={() => toggleCustomFilter(cf.id)}
+                                className={`inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-xl text-[11px] font-bold border cursor-pointer transition-all ${
+                                  isActive
+                                    ? 'bg-purple-600 text-white border-purple-600 shadow-2xs'
+                                    : 'bg-purple-50/70 text-purple-900 border-purple-200 hover:bg-purple-100'
+                                }`}
+                              >
+                                {isActive && <Check className="w-3 h-3 shrink-0" />}
+                                <span>{cf.label}</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteCustomFilter(cf.id, e)}
+                                  className={`p-0.5 rounded-full transition-colors ${
+                                    isActive ? 'hover:bg-purple-500 text-purple-200' : 'hover:bg-purple-200 text-purple-400'
+                                  }`}
+                                  title="커스텀 필터 삭제"
+                                >
+                                  <X className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* 3. 새 커스텀 필터 생성 폼 */}
+                      {isAddingCustomFilter && (
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-2 mt-1.5">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1">조건 종류</label>
+                            <select
+                              value={newFilterType}
+                              onChange={(e) => {
+                                setNewFilterType(e.target.value as CustomFilterType);
+                                setNewFilterValue('');
+                              }}
+                              className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-indigo-500"
+                            >
+                              {CUSTOM_FILTER_TYPE_OPTIONS.map((opt) => (
+                                <option key={opt.type} value={opt.type}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {!selectedCustomTypeMeta?.noValue && (
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 mb-1">조건 값</label>
+                              <input
+                                type={selectedCustomTypeMeta?.isNumber ? 'number' : 'text'}
+                                value={newFilterValue}
+                                onChange={(e) => setNewFilterValue(e.target.value)}
+                                placeholder={selectedCustomTypeMeta?.placeholder}
+                                className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 outline-none focus:border-indigo-500"
+                              />
+                            </div>
+                          )}
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                              버튼 이름 (비워두면 자동 생성)
+                            </label>
+                            <input
+                              type="text"
+                              value={newFilterLabel}
+                              onChange={(e) => setNewFilterLabel(e.target.value)}
+                              placeholder="예: 10화 이상 밀림"
+                              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 outline-none focus:border-indigo-500"
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleAddCustomFilter}
+                            className={`w-full py-2 rounded-lg text-xs font-extrabold text-white shadow-xs transition-all active:scale-95 ${themeStyles.primaryBtn}`}
+                          >
+                            + 필터 칩 추가 및 적용
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 1차/2차 스마트 정렬 드롭다운 */}
               <select
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value as SortOption)}
@@ -1395,62 +1772,6 @@ export default function App() {
                 </button>
               );
             })}
-          </div>
-
-          {/* 다중 선택 가능한 조건 필터 칩 바 */}
-          <div className="flex items-center justify-between gap-1.5 pt-0.5 flex-wrap">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 mr-0.5">
-                <Filter className="w-3 h-3" />
-                <span>필터</span>
-              </span>
-
-              <button
-                type="button"
-                onClick={() => toggleFilterChip('unread')}
-                className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-all active:scale-95 flex items-center gap-1 ${
-                  activeFilters.unread
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <span>📖 안 본 회차</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => toggleFilterChip('hasMemo')}
-                className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-all active:scale-95 flex items-center gap-1 ${
-                  activeFilters.hasMemo
-                    ? 'bg-amber-500 text-white border-amber-500 shadow-2xs'
-                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <span>📝 비고 있음</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => toggleFilterChip('overRead')}
-                className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-all active:scale-95 flex items-center gap-1 ${
-                  activeFilters.overRead
-                    ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
-                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <span>🚨 회차 초과</span>
-              </button>
-            </div>
-
-            {hasAnyActiveFilter && (
-              <button
-                type="button"
-                onClick={resetFilterChips}
-                className="text-[11px] font-bold text-slate-400 hover:text-slate-700 px-1.5 py-0.5 rounded hover:bg-slate-100 transition-colors"
-              >
-                초기화
-              </button>
-            )}
           </div>
 
           {/* 하단 카드 목록 */}
@@ -1660,7 +1981,6 @@ export default function App() {
         className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2.5 sm:px-4 sm:py-3 shadow-2xl flex items-center justify-center"
       >
         <div className="w-full max-w-xl grid grid-cols-3 gap-2">
-          {/* 1. 신규 등록 버튼 */}
           <button
             type="button"
             disabled={searchState.type !== 'NEW_WORK'}
@@ -1675,7 +1995,6 @@ export default function App() {
             <span className="truncate">신규 등록</span>
           </button>
 
-          {/* 2. 이동 / 수정 버튼 */}
           <button
             type="button"
             disabled={searchState.type !== 'EXACT_MATCH'}
@@ -1690,7 +2009,6 @@ export default function App() {
             <span className="truncate">이동/수정</span>
           </button>
 
-          {/* 3. 삭제 버튼 */}
           <button
             type="button"
             disabled={searchState.type !== 'EXACT_MATCH'}
