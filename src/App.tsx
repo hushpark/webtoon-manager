@@ -25,7 +25,8 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
-  Filter
+  Filter,
+  Undo2
 } from 'lucide-react';
 
 const NEW_WORK_STATUS_OPTIONS: WorkStatus[] = [
@@ -96,6 +97,42 @@ const CUSTOM_FILTER_TYPE_OPTIONS: { type: CustomFilterType; label: string; place
   { type: 'read_within', label: '최근 N일 이내 본 작품', placeholder: '예: 7', isNumber: true },
   { type: 'read_older', label: 'N일 이상 안 본 방치 작품', placeholder: '예: 30', isNumber: true },
 ];
+
+// 되돌리기(Undo) 스낵바 관련
+const UNDO_DURATION_MS = 5000;
+
+type UndoPatch = Partial<Pick<Work, 'my_episode' | 'episode' | 'last_read_at' | 'updated_at' | 'has_fire_emoji'>>;
+
+interface UndoInfo {
+  key: number;          // 스낵바/진행 막대 재시작용 키
+  workId: Work['id'];
+  title: string;
+  message: string;
+  prev: UndoPatch;      // 처음 변경하기 직전 값 (연속 변경 시에도 최초 값 유지)
+}
+
+// 남은 시간을 보여주는 진행 막대 (key가 바뀌면 처음부터 다시 줄어듦)
+function UndoProgressBar({ duration }: { duration: number }) {
+  const [width, setWidth] = useState(100);
+  useEffect(() => {
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setWidth(0));
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, []);
+  return (
+    <div className="h-1 w-full bg-white/15 rounded-full overflow-hidden mt-1.5">
+      <div
+        className="h-full bg-indigo-400 rounded-full"
+        style={{ width: `${width}%`, transition: `width ${duration}ms linear` }}
+      />
+    </div>
+  );
+}
 
 export default function App() {
   const [searchInput, setSearchInput] = useState('');
@@ -185,6 +222,53 @@ export default function App() {
   const hasMovedRef = useRef(false);
 
   const lastWheelTimeRef = useRef<number>(0);
+
+  // 되돌리기 스낵바 상태
+  const [undoInfo, setUndoInfo] = useState<UndoInfo | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    };
+  }, []);
+
+  // 회차 변경 직후 되돌리기 스낵바 표시
+  // 같은 작품을 연달아 바꾸면 '처음 바꾸기 직전 값'을 그대로 유지합니다.
+  const showUndo = (work: Work, prevPatch: UndoPatch, message: string) => {
+    setUndoInfo((current) => {
+      const prev =
+        current && current.workId === work.id
+          ? { ...prevPatch, ...current.prev }
+          : prevPatch;
+      return { key: Date.now(), workId: work.id, title: work.title, message, prev };
+    });
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = setTimeout(() => setUndoInfo(null), UNDO_DURATION_MS);
+  };
+
+  const handleUndo = async () => {
+    if (!undoInfo) return;
+    const target = undoInfo;
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndoInfo(null);
+
+    const { error } = await supabase
+      .from('works')
+      .update(target.prev)
+      .eq('id', target.workId);
+
+    if (!error) {
+      fetchAllWorks();
+      if (searchState.type === 'EXACT_MATCH' && searchState.work.id === target.workId) {
+        if (target.prev.my_episode !== undefined) setMyEpisodeInput(String(target.prev.my_episode ?? 0));
+        if (target.prev.episode !== undefined) setEpisodeInput(String(target.prev.episode ?? 0));
+      }
+      showToast(`↩️ '${target.title}' 되돌리기 완료`);
+    } else {
+      setErrorMessage(`되돌리기에 실패했습니다. (${error.message})`);
+    }
+  };
 
   const cleanTitle = (str: string) => str.replace(/\s+/g, '').toLowerCase();
 
@@ -743,6 +827,16 @@ export default function App() {
       if (searchState.type === 'EXACT_MATCH' && searchState.work.id === work.id) {
         setMyEpisodeInput(String(nextMyEp));
       }
+      showUndo(
+        work,
+        {
+          my_episode: work.my_episode || 0,
+          has_fire_emoji: work.has_fire_emoji ?? false,
+          updated_at: work.updated_at,
+          last_read_at: work.last_read_at ?? null
+        },
+        `본 회차 ${nextMyEp}화`
+      );
     } else {
       setErrorMessage(`회차 저장에 실패했습니다. (${error.message})`);
     }
@@ -794,7 +888,16 @@ export default function App() {
 
       if (!error) {
         fetchAllWorks();
-        showToast(`📌 '${work.title}' 본 회차: ${nextMyEp}화`);
+        showUndo(
+          work,
+          {
+            my_episode: work.my_episode || 0,
+            has_fire_emoji: work.has_fire_emoji ?? false,
+            updated_at: work.updated_at,
+            last_read_at: work.last_read_at ?? null
+          },
+          `본 회차 ${nextMyEp}화`
+        );
       } else {
         setErrorMessage(`본 회차 저장에 실패했습니다. (${error.message})`);
       }
@@ -810,7 +913,11 @@ export default function App() {
 
       if (!error) {
         fetchAllWorks();
-        showToast(`📖 '${work.title}' 전체 회차: ${nextTotalEp}화`);
+        showUndo(
+          work,
+          { episode: work.episode || 0, updated_at: work.updated_at },
+          `전체 회차 ${nextTotalEp}화`
+        );
       } else {
         setErrorMessage(`전체 회차 저장에 실패했습니다. (${error.message})`);
       }
@@ -2072,6 +2179,31 @@ export default function App() {
       </footer>
 
       {/* 토스트 팝업 */}
+      {/* ↩️ 되돌리기 스낵바: 하단 고정 바 바로 위 */}
+      {undoInfo && (
+        <div
+          key={undoInfo.key}
+          role="status"
+          className="fixed left-1/2 -translate-x-1/2 bottom-20 sm:bottom-24 z-40 w-[calc(100%-24px)] max-w-md bg-slate-900/95 text-white px-3.5 py-2.5 rounded-xl shadow-2xl border border-slate-700 animate-fade-in"
+        >
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <span className="shrink-0">📌</span>
+            <span className="truncate min-w-0 flex-1">
+              '{undoInfo.title}' {undoInfo.message}
+            </span>
+            <button
+              type="button"
+              onClick={handleUndo}
+              className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 active:scale-95 transition-all text-white text-xs font-extrabold"
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+              <span>되돌리기</span>
+            </button>
+          </div>
+          <UndoProgressBar duration={UNDO_DURATION_MS} />
+        </div>
+      )}
+
       {toastMessage && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-2xl z-50 flex items-center gap-2 backdrop-blur-sm border border-slate-700 pointer-events-none animate-fade-in">
           <Check className="w-4 h-4 text-emerald-400" />
