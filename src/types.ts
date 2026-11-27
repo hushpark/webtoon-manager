@@ -21,6 +21,7 @@ export interface Work {
   status: WorkStatus;
   has_fire_emoji?: boolean;
   memo?: string | null;
+  last_read_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }
