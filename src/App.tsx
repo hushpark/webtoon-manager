@@ -499,7 +499,7 @@ export default function App() {
         setSearchState({ type: 'EXACT_MATCH', work: exact });
         setEpisodeInput(String(exact.episode || ''));
         setMyEpisodeInput(String(exact.my_episode !== undefined ? exact.my_episode : ''));
-        setMemoInput((exact as any).memo || '');
+        setMemoInput(exact.memo || '');
         setSelectedStatus(exact.status as WorkStatus);
       } else {
         setSearchState({ type: 'NEW_WORK', query: trimmed });
@@ -517,7 +517,7 @@ export default function App() {
     setSearchState({ type: 'EXACT_MATCH', work });
     setEpisodeInput(String(work.episode || ''));
     setMyEpisodeInput(String(work.my_episode !== undefined ? work.my_episode : ''));
-    setMemoInput((work as any).memo || '');
+    setMemoInput(work.memo || '');
     setSelectedStatus(work.status as WorkStatus);
     setLogs((prev) => Array.from(new Set([work.title, ...prev])).slice(0, 10));
     resetTimer();
@@ -546,7 +546,7 @@ export default function App() {
       setSearchState({ type: 'EXACT_MATCH', work: exact });
       setEpisodeInput(String(exact.episode || ''));
       setMyEpisodeInput(String(exact.my_episode !== undefined ? exact.my_episode : ''));
-      setMemoInput((exact as any).memo || '');
+      setMemoInput(exact.memo || '');
       setSelectedStatus(exact.status as WorkStatus);
     } else {
       setSearchState({ type: 'NEW_WORK', query: trimmed });
@@ -623,7 +623,7 @@ export default function App() {
       handleReset();
       fetchAllWorks();
     } else {
-      setErrorMessage('등록에 실패했습니다.');
+      setErrorMessage(`등록에 실패했습니다. ({error.message})`);
     }
   };
 
@@ -652,7 +652,7 @@ export default function App() {
     const hasReadChanged = myEp !== (currentWork.my_episode || 0);
     const nextLastReadAt = hasReadChanged 
       ? nowIso 
-      : ((currentWork as any).last_read_at || currentWork.updated_at || nowIso);
+      : (currentWork.last_read_at || currentWork.updated_at || nowIso);
 
     const { error } = await supabase
       .from('works')
@@ -673,7 +673,7 @@ export default function App() {
       handleReset();
       fetchAllWorks();
     } else {
-      setErrorMessage('수정에 실패했습니다.');
+      setErrorMessage(`수정에 실패했습니다. ({error.message})`);
     }
   };
 
@@ -695,7 +695,7 @@ export default function App() {
       setQuickMemoModal((prev) => ({ ...prev, isOpen: false }));
       showToast(`📝 '${target.title}' 비고 저장 완료`);
     } else {
-      setErrorMessage('비고 저장에 실패했습니다.');
+      setErrorMessage(`비고 저장에 실패했습니다. ({error.message})`);
     }
   };
 
@@ -718,7 +718,7 @@ export default function App() {
         handleReset();
         fetchAllWorks();
       } else {
-        setErrorMessage('삭제에 실패했습니다.');
+        setErrorMessage(`삭제에 실패했습니다. ({error.message})`);
       }
     }
   };
@@ -743,6 +743,8 @@ export default function App() {
       if (searchState.type === 'EXACT_MATCH' && searchState.work.id === work.id) {
         setMyEpisodeInput(String(nextMyEp));
       }
+    } else {
+      setErrorMessage(`회차 저장에 실패했습니다. (${error.message})`);
     }
   };
 
@@ -793,6 +795,8 @@ export default function App() {
       if (!error) {
         fetchAllWorks();
         showToast(`📌 '${work.title}' 본 회차: ${nextMyEp}화`);
+      } else {
+        setErrorMessage(`본 회차 저장에 실패했습니다. (${error.message})`);
       }
     } else {
       const nextTotalEp = Math.max(0, (work.episode || 0) + delta);
@@ -807,6 +811,8 @@ export default function App() {
       if (!error) {
         fetchAllWorks();
         showToast(`📖 '${work.title}' 전체 회차: ${nextTotalEp}화`);
+      } else {
+        setErrorMessage(`전체 회차 저장에 실패했습니다. (${error.message})`);
       }
     }
   };
@@ -868,11 +874,11 @@ export default function App() {
     const myEp = work.my_episode || 0;
     const totalEp = work.episode || 0;
     const unreadEp = totalEp - myEp;
-    const memoText = ((work as any).memo || '').toLowerCase();
+    const memoText = (work.memo || '').toLowerCase();
     const titleText = (work.title || '').toLowerCase();
     const numVal = Number(filter.value) || 0;
     const strVal = filter.value.toLowerCase().trim();
-    const readTime = new Date((work as any).last_read_at || work.updated_at || work.created_at || 0).getTime();
+    const readTime = new Date(work.last_read_at || work.updated_at || work.created_at || 0).getTime();
     const daysElapsed = (Date.now() - readTime) / (24 * 60 * 60 * 1000);
 
     switch (filter.type) {
@@ -907,7 +913,7 @@ export default function App() {
     const filtered = allWorks.filter((work) => {
       const myEp = work.my_episode || 0;
       const totalEp = work.episode || 0;
-      const hasMemo = Boolean((work as any).memo && (work as any).memo.trim().length > 0);
+      const hasMemo = Boolean(work.memo && work.memo.trim().length > 0);
 
       // 기본 다중 필터
       if (builtInFilters.unread && myEp >= totalEp) return false;
@@ -932,7 +938,7 @@ export default function App() {
       return true;
     });
 
-    const getReadTime = (w: Work) => new Date((w as any).last_read_at || w.updated_at || w.created_at || 0).getTime();
+    const getReadTime = (w: Work) => new Date(w.last_read_at || w.updated_at || w.created_at || 0).getTime();
     const getSavedTime = (w: Work) => new Date(w.updated_at || w.created_at || 0).getTime();
     const getUnreadCount = (w: Work) => (w.episode || 0) - (w.my_episode || 0);
 
@@ -1101,7 +1107,7 @@ export default function App() {
                 {suggestions.map((work) => {
                   const myEp = work.my_episode || 0;
                   const totalEp = work.episode || 0;
-                  const hasMemo = Boolean((work as any).memo && (work as any).memo.trim().length > 0);
+                  const hasMemo = Boolean(work.memo && work.memo.trim().length > 0);
                   return (
                     <div
                       key={work.id}
@@ -1210,7 +1216,7 @@ export default function App() {
                 
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-blue-800 font-medium">
                   <span>
-                    📌 본 날짜: <strong>{new Date((searchState.work as any).last_read_at || searchState.work.updated_at || searchState.work.created_at || '').toLocaleDateString()}</strong>
+                    📌 본 날짜: <strong>{new Date(searchState.work.last_read_at || searchState.work.updated_at || searchState.work.created_at || '').toLocaleDateString()}</strong>
                   </span>
                   <span className="text-blue-300">|</span>
                   <span>
@@ -1829,8 +1835,8 @@ export default function App() {
                 const totalEp = work.episode || 0;
                 const isError = myEp > totalEp;
                 const remainingFireDays = getFireRemainingDays(work);
-                const dateInfo = formatWorkDate((work as any).last_read_at || work.updated_at || work.created_at);
-                const workMemo = ((work as any).memo || '').trim();
+                const dateInfo = formatWorkDate(work.last_read_at || work.updated_at || work.created_at);
+                const workMemo = (work.memo || '').trim();
                 const hasMemo = workMemo.length > 0;
 
                 return (
